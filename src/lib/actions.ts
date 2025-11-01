@@ -1,41 +1,13 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
 
-
-async function getArchives() {
-  const { firestore } = getFirebase();
-  const archivesCol = collection(firestore, 'archives');
-  const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
-  const snapshot = await getDocs(q);
-
-  if (snapshot.empty) {
-    return [];
-  }
-
-  const archives = snapshot.docs.map((doc) => {
-    const data = doc.data();
-    const createdAt = data.createdAt;
-    
-    return {
-      id: doc.id,
-      ...data,
-      createdAt: createdAt?.toMillis ? createdAt.toMillis() : createdAt,
-    };
-  });
-  
-  return archives;
-}
-
-
-const ArchiveUrlSchema = z.object({
-  url: z.string().url({ message: 'Please enter a valid URL.' }),
-});
 
 async function pinContentToPinata(content: string, title: string) {
   const { PINATA_API_KEY, PINATA_SECRET_API_KEY } = process.env;
@@ -63,7 +35,8 @@ async function pinContentToPinata(content: string, title: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      'pinata_api_key': PINATA_API_KEY,
+      'pinata_secret_api_key': PINATA_SECRET_API_KEY,
     },
     body: pinataData,
   });
@@ -124,7 +97,9 @@ export async function archiveUrl(
   prevState: ArchiveState,
   formData: FormData
 ): Promise<ArchiveState> {
-  const validatedFields = ArchiveUrlSchema.safeParse({
+  const validatedFields = z.object({
+    url: z.string().url({ message: 'Please enter a valid URL.' }),
+  }).safeParse({
     url: formData.get('url'),
   });
 
