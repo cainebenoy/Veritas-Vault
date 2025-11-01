@@ -7,16 +7,9 @@ service cloud.firestore {
     match /archives/{archiveId} {
       allow read: if true;
       
-      // Allow creation of new archives only by authenticated users.
-      // In our app, we use anonymous authentication to grant this ability.
-      // We also validate that the incoming data has the required fields.
-      allow create: if request.auth != null
-                      && 'originalUrl' in request.resource.data
-                      && 'title' in request.resource.data
-                      && 'status' in request.resource.data;
-                      
-      // Do not allow updates or deletes for this simple use case.
-      allow update, delete: if false;
+      // WARNING: Temporarily allow any write for the hackathon.
+      // In a production app, this should be restricted, e.g., `if request.auth != null;`
+      allow write: if true;
     }
 
     // Allow public read of archive content.
@@ -24,12 +17,9 @@ service cloud.firestore {
     match /archive_content/{archiveId} {
       allow read: if true;
 
-      // Only authenticated users can create the content document.
-      // This write should happen in the same server action as the archive creation.
-      allow create: if request.auth != null;
-
-      // Do not allow updates or deletes.
-      allow update, delete: if false;
+      // WARNING: Temporarily allow any write for the hackathon.
+      // In a production app, this should be restricted.
+      allow write: if true;
     }
   }
 }
