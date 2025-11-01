@@ -9,23 +9,32 @@ interface FirebaseAdminServices {
   firestore: Firestore;
 }
 
+let adminServices: FirebaseAdminServices | null = null;
+
 function getFirebase(): FirebaseAdminServices {
+  if (adminServices) {
+    return adminServices;
+  }
+
   if (getApps().length > 0) {
     const app = getApp();
-    return {
+    adminServices = {
       app,
       auth: getAuth(app),
       firestore: getFirestore(app),
     };
+    return adminServices;
   }
 
   const app = initializeApp({ projectId: firebaseConfig.projectId });
 
-  return {
+  adminServices = {
     app,
     auth: getAuth(app),
     firestore: getFirestore(app),
   };
+  
+  return adminServices;
 }
 
 export { getFirebase };
