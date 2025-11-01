@@ -11,9 +11,10 @@
         "ipfsUrl": { "type": "string" },
         "blockchainTx": { "type": "string" },
         "screenshotUrl": { "type": "string", "format": "uri" },
-        "status": { "type": "string", "enum": ["complete", "failed"] }
+        "archiveStatus": { "type": "string", "enum": ["complete", "failed", "pending"] },
+        "failureReason": { "type": "string" }
       },
-      "required": ["originalUrl", "title", "createdAt", "status"]
+      "required": ["originalUrl", "title", "createdAt", "archiveStatus"]
     },
     "ArchiveContent": {
       "title": "ArchiveContent",
