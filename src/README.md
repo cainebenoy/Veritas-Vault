@@ -1,5 +1,3 @@
-Created for the SFLC.in Hackathon 2025 by team Builders&Breakers
-
 # Veritas Vault
 
 **Veritas Vault** is a user-friendly tool to permanently archive web pages on the decentralized web, creating a resilient and censorship-resistant record of online content. It's a "Save Page As" for the modern, decentralized web.
