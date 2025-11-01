@@ -3,15 +3,15 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
 import type { Archive, ArchiveState, ArchiveContent } from './types';
-import { FieldValue } from 'firebase-admin/firestore';
 
 // Simulate a database fetch
 export async function getArchives(): Promise<Archive[]> {
   const { firestore } = getFirebase();
-  const archivesCol = firestore.collection('archives');
-  const q = archivesCol.orderBy('createdAt', 'desc').limit(20);
-  const snapshot = await q.get();
+  const archivesCol = collection(firestore, 'archives');
+  const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
+  const snapshot = await getDocs(q);
   
   if (snapshot.empty) {
     return [];
@@ -30,15 +30,15 @@ export async function getArchives(): Promise<Archive[]> {
 
 export async function getArchiveById(id: string): Promise<(Archive & ArchiveContent) | undefined> {
   const { firestore } = getFirebase();
-  const archiveDocRef = firestore.doc(`archives/${id}`);
-  const contentDocRef = firestore.doc(`archive_content/${id}`);
+  const archiveDocRef = doc(firestore, `archives/${id}`);
+  const contentDocRef = doc(firestore, `archive_content/${id}`);
 
   const [archiveDoc, contentDoc] = await Promise.all([
-    archiveDocRef.get(),
-    contentDocRef.get()
+    getDoc(archiveDocRef),
+    getDoc(contentDocRef)
   ]);
 
-  if (!archiveDoc.exists) {
+  if (!archiveDoc.exists()) {
     return undefined;
   }
 
@@ -108,23 +108,23 @@ export async function archiveUrl(
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
     // 4. Save to Firestore
-    const archivesCollection = firestore.collection('archives');
+    const archivesCollection = collection(firestore, 'archives');
     
-    const newArchiveData: Omit<Archive, 'id' | 'createdAt'> & { createdAt: FieldValue } = {
+    const newArchiveData = {
         originalUrl: url,
         title: pageTitle,
-        createdAt: FieldValue.serverTimestamp(), // Use server timestamp
+        createdAt: serverTimestamp(), // Use server timestamp
         ipfsUrl: ipfsUrl,
         blockchainTx: txHash,
         screenshotUrl: `https://picsum.photos/seed/${Math.random()}/600/400`,
-        status: 'complete',
+        status: 'complete' as const,
     };
 
-    const docRef = await archivesCollection.add(newArchiveData);
+    const docRef = await addDoc(archivesCollection, newArchiveData);
     console.log("Document written with ID: ", docRef.id);
 
     // Save the large content to a separate document
-    const contentDocRef = firestore.doc(`archive_content/${docRef.id}`);
+    const contentDocRef = doc(firestore, `archive_content/${docRef.id}`);
     await contentDocRef.set({ content: pageContent });
 
 
