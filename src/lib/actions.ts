@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, addDoc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
 
@@ -16,7 +16,8 @@ async function pinContentToPinata(content: string, title: string) {
     console.warn('Pinata API keys not found. Simulating IPFS upload.');
     // Fallback to simulation if keys are not provided
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    return `bafybei${Math.random().toString(36).substring(2)}`;
+    const randomHash = [...Array(46)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+    return `bafybei${randomHash}`;
   }
   
   const pinataContent = {
@@ -29,14 +30,16 @@ async function pinContentToPinata(content: string, title: string) {
     pinataMetadata: {
       name: `${title}.json`,
     },
+    pinataOptions: {
+      cidVersion: 1,
+    }
   });
 
   const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'pinata_api_key': PINATA_API_KEY,
-      'pinata_secret_api_key': PINATA_SECRET_API_KEY,
+      'Authorization': `Bearer ${process.env.PINATA_JWT}`
     },
     body: pinataData,
   });
@@ -59,7 +62,7 @@ async function getScreenshotUrl(url: string) {
   }
   
   // Use a reliable screenshot service
-  const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${screenshotOneApiKey}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1200&viewport_height=630`;
+  const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${screenshotOneApiKey}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1200&viewport_height=630&block_ads=true&block_cookie_banners=true`;
 
   // No need to fetch, the URL itself is what we store
   return screenshotApiUrl;
@@ -70,17 +73,39 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
         // 1. Prioritize Open Graph image
         const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
         if (ogImageMatch && ogImageMatch[1]) {
-            console.log('Found og:image:', ogImageMatch[1]);
-            return new URL(ogImageMatch[1], baseUrl).href;
+            const ogImageUrl = ogImageMatch[1];
+            // Simple check to avoid data URIs or invalid URLs from og:image
+            if (ogImageUrl.startsWith('http')) {
+                 console.log('Found og:image:', ogImageUrl);
+                 return new URL(ogImageUrl, baseUrl).href;
+            }
         }
 
-        // 2. Fallback to the first image tag in the body
+        // 2. Fallback to searching for a suitable image tag
         const bodyMatch = pageContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         if (bodyMatch) {
-            const imgTagMatch = bodyMatch[1].match(/<img[^>]+src=["'](.*?)["']/i);
-            if (imgTagMatch && imgTagMatch[1]) {
-                console.log('Found first img tag:', imgTagMatch[1]);
-                return new URL(imgTagMatch[1], baseUrl).href;
+            const imgTags = bodyMatch[1].match(/<img[^>]+>/gi) || [];
+            
+            for (const imgTag of imgTags) {
+                const srcMatch = imgTag.match(/src=["'](.*?)["']/i);
+                if (!srcMatch || !srcMatch[1]) continue;
+
+                const src = srcMatch[1];
+                
+                // Skip data URIs and tiny images
+                if (src.startsWith('data:')) continue;
+                if (src.toLowerCase().includes('logo')) continue;
+
+                // Check for explicit small sizes
+                const widthMatch = imgTag.match(/width=["'](\d+)["']/i);
+                const heightMatch = imgTag.match(/height=["'](\d+)["']/i);
+                const minSize = 150;
+
+                if (widthMatch && parseInt(widthMatch[1], 10) < minSize) continue;
+                if (heightMatch && parseInt(heightMatch[1], 10) < minSize) continue;
+                
+                console.log('Found suitable img tag:', src);
+                return new URL(src, baseUrl).href;
             }
         }
         
@@ -89,6 +114,7 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
     }
     
     // 3. If nothing is found, return null
+    console.log('No suitable image found in HTML content.');
     return null;
 }
 
@@ -113,7 +139,6 @@ export async function archiveUrl(
   const url = validatedFields.data.url;
 
   try {
-    const { firestore } = getFirebase();
     // 1. Fetch the content from the URL
     console.log(`Fetching content from: ${url}`);
     const response = await fetch(url, {
@@ -132,7 +157,20 @@ export async function archiveUrl(
     const pageTitle = titleMatch ? titleMatch[1] : `Archived Page: ${new URL(url).hostname}`;
     console.log(`Fetched page with title: "${pageTitle}"`);
 
-    // 2. Upload to IPFS via Pinata
+    const { firestore } = getFirebase();
+    
+    // Create temporary document to show progress
+    const tempDocRef = doc(collection(firestore, 'archives'));
+    await setDoc(tempDocRef, {
+        originalUrl: url,
+        title: pageTitle,
+        createdAt: serverTimestamp(),
+        status: 'pending',
+    });
+    console.log("Created temporary document with ID: ", tempDocRef.id);
+    revalidatePath('/'); // Trigger UI update to show pending card
+
+    // 2. Upload to IPFS via Pinata (can be slow)
     console.log('Uploading content to IPFS via Pinata...');
     const ipfsHash = await pinContentToPinata(pageContent, pageTitle);
     const ipfsUrl = `ipfs://${ipfsHash}`;
@@ -152,10 +190,8 @@ export async function archiveUrl(
     }
 
 
-    // 5. Save to Firestore
-    const archivesCollection = collection(firestore, 'archives');
-    
-    const newArchiveData = {
+    // 5. Update document in Firestore with all data
+    const finalArchiveData = {
         originalUrl: url,
         title: pageTitle,
         createdAt: serverTimestamp(),
@@ -164,19 +200,23 @@ export async function archiveUrl(
         screenshotUrl: screenshotUrl,
         status: 'complete' as const,
     };
+    
+    await setDoc(tempDocRef, finalArchiveData, { merge: true });
 
-    const docRef = await addDoc(archivesCollection, newArchiveData);
-
-    console.log("Document written with ID: ", docRef.id);
+    // Also store the full content separately to keep the main 'archives' collection light
+    const contentDocRef = doc(firestore, 'archive_content', tempDocRef.id);
+    await setDoc(contentDocRef, { content: pageContent });
+    
+    console.log("Finalized document with ID: ", tempDocRef.id);
     
     revalidatePath('/');
-    revalidatePath(`/archives/${docRef.id}`);
+    revalidatePath(`/archives/${tempDocRef.id}`);
     
     return {
         status: 'success',
         message: 'Page successfully archived!',
         data: {
-            archiveId: docRef.id,
+            archiveId: tempDocRef.id,
             ipfsUrl: ipfsUrl,
             blockchainTx: txHash,
         }
@@ -195,37 +235,25 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
   try {
     const { firestore } = getFirebase();
     const archiveDocRef = doc(firestore, `archives/${id}`);
-    
-    const archiveDoc = await getDoc(archiveDocRef);
+    const contentDocRef = doc(firestore, `archive_content/${id}`);
+
+    const [archiveDoc, contentDoc] = await Promise.all([
+      getDoc(archiveDocRef),
+      getDoc(contentDocRef)
+    ]);
     
     if (!archiveDoc.exists()) {
       return undefined;
     }
     
-    const ipfsHash = archiveDoc.data().ipfsUrl.replace('ipfs://', '');
-    const pinataUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-    
-    const res = await fetch(pinataUrl);
-    if (!res.ok) {
-        console.error(`Failed to fetch content from Pinata: ${res.status} ${res.statusText}`);
-        // Return metadata even if content fails to load
-        const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
-        if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
-            archiveData.createdAt = archiveData.createdAt.toMillis();
-        }
-        return {
-            ...archiveData,
-            content: '<p>Error: Could not load archived content from IPFS.</p>',
-        };
-    }
-    
-    const jsonData = await res.json();
-    const content = jsonData.html;
-    
     const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
     if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
       archiveData.createdAt = archiveData.createdAt.toMillis();
     }
+    
+    const content = contentDoc.exists() 
+      ? contentDoc.data().content 
+      : '<p>Error: Could not load archived content.</p>';
     
     return {
       ...archiveData,
