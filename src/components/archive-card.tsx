@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Archive } from '@/lib/types';
@@ -9,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from 'lucide-react';
 
 type ArchiveCardProps = {
@@ -29,13 +30,17 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
       <Card className="h-full flex flex-col transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
         <CardContent className="p-0">
           <div className="aspect-video w-full overflow-hidden relative">
-            <Image
-              src={archive.screenshotUrl}
-              alt={`Screenshot of ${archive.title}`}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-              data-ai-hint="website screenshot"
-            />
+            {archive.screenshotUrl ? (
+              <Image
+                src={archive.screenshotUrl}
+                alt={`Screenshot of ${archive.title}`}
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                data-ai-hint="website screenshot"
+              />
+            ) : (
+              <Skeleton className="h-full w-full" />
+            )}
           </div>
         </CardContent>
         <CardHeader className="flex-grow">
