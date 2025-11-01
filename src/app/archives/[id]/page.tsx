@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getArchiveById } from '@/lib/actions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription as AlertDialogDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 type PageProps = {
   params: { id: string };
@@ -20,12 +20,15 @@ export default async function ArchivePage({ params }: PageProps) {
   
   const getDate = () => {
     if (!archive.createdAt) return new Date();
-    // Check if it's a Firestore Timestamp (from server actions, it should be a number, but this is safer)
+    // Check if it's a Firestore Timestamp
     if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
       return new Date(archive.createdAt.toMillis());
     }
-    // Assume it's a number (milliseconds)
-    return new Date(archive.createdAt);
+    // Assume it's already a number (milliseconds) if passed from server action
+    if (typeof archive.createdAt === 'number') {
+        return new Date(archive.createdAt);
+    }
+    return new Date(); // Fallback
   };
 
   const formattedDate = getDate().toLocaleString('en-US', {
@@ -78,9 +81,9 @@ export default async function ArchivePage({ params }: PageProps) {
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Archiving Failed</AlertTitle>
-            <AlertDialogDescription>
+            <AlertDescription>
               {archive.failureReason || 'An unknown error occurred during the archiving process.'}
-            </AlertDialogDescription>
+            </AlertDescription>
           </Alert>
         )}
 

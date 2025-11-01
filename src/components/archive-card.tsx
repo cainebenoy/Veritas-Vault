@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Archive } from '@/lib/types';
@@ -25,7 +24,10 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
       return new Date(archive.createdAt.toMillis());
     }
     // Assume it's a number (milliseconds)
-    return new Date(archive.createdAt);
+    if (typeof archive.createdAt === 'number') {
+        return new Date(archive.createdAt);
+    }
+    return new Date(); // Fallback
   };
 
   const formattedDate = getDate().toLocaleDateString('en-US', {
@@ -49,7 +51,9 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
                 data-ai-hint="website screenshot"
               />
             ) : (
-              <Skeleton className="h-full w-full" />
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                 <Skeleton className="h-full w-full" />
+              </div>
             )}
           </div>
         </CardContent>

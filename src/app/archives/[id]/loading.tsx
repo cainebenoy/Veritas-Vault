@@ -29,8 +29,8 @@ export default function Loading() {
                     <CardContent className="space-y-6">
                         {Array.from({ length: 4 }).map((_, i) => (
                             <div key={i}>
-                                <Skeleton className="h-5 w-24" />
-                                <Skeleton className="h-5 w-full mt-2" />
+                                <Skeleton className="h-5 w-24 mb-2" />
+                                <Skeleton className="h-5 w-full" />
                             </div>
                         ))}
                     </CardContent>
