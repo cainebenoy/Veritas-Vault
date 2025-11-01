@@ -221,9 +221,12 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
     const [archiveDoc, contentDoc] = await Promise.all([
       getDoc(archiveDocRef),
       getDoc(contentDocRef)
-    ]);
+    ]).catch(err => {
+      console.error(`Error fetching docs for archive ${id}:`, err);
+      return [null, null];
+    });
     
-    if (!archiveDoc.exists()) {
+    if (!archiveDoc || !archiveDoc.exists()) {
       return undefined;
     }
     
@@ -233,7 +236,7 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
       archiveData.createdAt = archiveData.createdAt.toMillis();
     }
     
-    const content = contentDoc.exists() 
+    const content = contentDoc && contentDoc.exists() 
       ? contentDoc.data().content 
       : '<p>Error: Could not load archived content.</p>';
     
@@ -242,7 +245,7 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
       content: content,
     };
   } catch (error) {
-    console.error(`Error fetching archive ${id}:`, error);
+    console.error(`Error processing archive ${id}:`, error);
     return undefined;
   }
 }
