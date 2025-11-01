@@ -2,20 +2,45 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import type { Archive, ArchiveState } from './types';
-import { mockArchives } from './mock-data';
+import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, limit, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getFirebase } from '@/firebase/server-init';
+import type { Archive, ArchiveState, ArchiveContent } from './types';
 
 // Simulate a database fetch
 export async function getArchives(): Promise<Archive[]> {
-  // In a real app, you'd fetch this from Firestore or another DB
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return mockArchives;
+  const { firestore } = getFirebase();
+  const archivesCol = collection(firestore, 'archives');
+  const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
+  const snapshot = await getDocs(q);
+  
+  if (snapshot.empty) {
+    return [];
+  }
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Archive));
 }
 
-export async function getArchiveById(id: string): Promise<Archive | undefined> {
-  // In a real app, you'd fetch this from a DB
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return mockArchives.find((archive) => archive.id === id);
+export async function getArchiveById(id: string): Promise<(Archive & ArchiveContent) | undefined> {
+  const { firestore } = getFirebase();
+  const archiveDocRef = doc(firestore, 'archives', id);
+  const contentDocRef = doc(firestore, 'archive_content', id);
+
+  const [archiveDoc, contentDoc] = await Promise.all([
+    getDoc(archiveDocRef),
+    getDoc(contentDocRef)
+  ]);
+
+  if (!archiveDoc.exists()) {
+    return undefined;
+  }
+
+  const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as Archive;
+  const contentData = contentDoc.exists() ? contentDoc.data() as ArchiveContent : { content: '' };
+
+  return {
+    ...archiveData,
+    ...contentData,
+  };
 }
 
 const ArchiveUrlSchema = z.object({
@@ -40,6 +65,7 @@ export async function archiveUrl(
   const url = validatedFields.data.url;
 
   try {
+    const { firestore } = getFirebase();
     // 1. Fetch the content from the URL
     console.log(`Fetching content from: ${url}`);
     const response = await fetch(url, {
@@ -68,34 +94,37 @@ export async function archiveUrl(
     await new Promise((resolve) => setTimeout(resolve, 2500));
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-    // 4. Simulate saving to database and creating the new archive object
-    const newArchive: Archive = {
-        id: (mockArchives.length + 1).toString(),
+    // 4. Save to Firestore
+    const archivesCollection = collection(firestore, 'archives');
+    
+    const newArchiveData: Omit<Archive, 'id'> = {
         originalUrl: url,
         title: pageTitle,
-        content: pageContent,
-        createdAt: Date.now(),
+        createdAt: serverTimestamp(), // Use server timestamp
         ipfsUrl: ipfsUrl,
         blockchainTx: txHash,
         screenshotUrl: `https://picsum.photos/seed/${Math.random()}/600/400`,
         status: 'complete',
     };
 
-    // In a real app, you would save `newArchive` to your database.
-    // For this simulation, we'll just pretend. We won't modify the mock data directly.
-    // We will add it to the top of the array for UI demonstration purposes.
-    mockArchives.unshift(newArchive);
+    const docRef = await addDoc(archivesCollection, newArchiveData);
+    console.log("Document written with ID: ", docRef.id);
+
+    // Save the large content to a separate document
+    const contentDocRef = doc(firestore, 'archive_content', docRef.id);
+    await setDoc(contentDocRef, { content: pageContent });
 
 
     revalidatePath('/');
+    revalidatePath(`/archives/${docRef.id}`);
     
     return {
         status: 'success',
         message: 'Page successfully archived!',
         data: {
-            archiveId: newArchive.id,
-            ipfsUrl: newArchive.ipfsUrl,
-            blockchainTx: newArchive.blockchainTx,
+            archiveId: docRef.id,
+            ipfsUrl: ipfsUrl,
+            blockchainTx: txHash,
         }
     };
 

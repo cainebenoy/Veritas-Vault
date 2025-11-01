@@ -1,3 +1,5 @@
+import type { FieldValue } from "firebase/firestore";
+
 export type ArchiveStatus =
   | 'idle'
   | 'pending'
@@ -11,14 +13,17 @@ export type Archive = {
   id: string;
   originalUrl: string;
   title: string;
-  content: string;
-  createdAt: number;
+  createdAt: FieldValue | number;
   ipfsUrl: string;
   blockchainTx: string;
   screenshotUrl: string;
   status: 'complete' | 'failed';
   failureReason?: string;
 };
+
+export type ArchiveContent = {
+  content: string;
+}
 
 export type ArchiveState = {
   status: 'success' | 'error' | 'idle';

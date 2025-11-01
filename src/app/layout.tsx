@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'Veritas Vault',
@@ -20,7 +21,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased h-full">
-        {children}
+        <FirebaseClientProvider>{children}</FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

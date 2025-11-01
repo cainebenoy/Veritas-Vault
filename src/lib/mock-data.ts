@@ -1,48 +1,15 @@
 import type { Archive } from './types';
 
+// This file is no longer the primary source of truth, but can be kept for testing or as a backup.
 export const mockArchives: Archive[] = [
   {
     id: '1',
     originalUrl: 'https://example.com/article-one',
     title: 'The Future of Decentralized Web',
-    content: '<h1>The Future of Decentralized Web</h1><p>The decentralized web, or Web3, promises a more open, transparent, and user-centric internet...</p>',
     createdAt: new Date('2024-05-19T10:00:00Z').getTime(),
     ipfsUrl: 'ipfs://bafybeigdyrzt5s62f2q6e42o7733h3hzrwza4g4b3oeaby2j2g6cmjdi4y',
     blockchainTx: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
     screenshotUrl: 'https://picsum.photos/seed/tech/600/400',
-    status: 'complete',
-  },
-  {
-    id: '2',
-    originalUrl: 'https://example.com/article-two',
-    title: 'Sustainable Architecture in the 21st Century',
-    content: '<h1>Sustainable Architecture</h1><p>Exploring green building materials and energy-efficient designs that are shaping our cities.</p>',
-    createdAt: new Date('2024-05-18T14:30:00Z').getTime(),
-    ipfsUrl: 'ipfs://bafybeigdyrzt5s62f2q6e42o7733h3hzrwza4g4b3oeaby2j2g6cmjd123',
-    blockchainTx: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-    screenshotUrl: 'https://picsum.photos/seed/archi/600/400',
-    status: 'complete',
-  },
-  {
-    id: '3',
-    originalUrl: 'https://example.com/article-three',
-    title: 'The Importance of Biodiversity',
-    content: '<h1>Biodiversity</h1><p>Why protecting our planet\'s ecosystems is crucial for the survival of all species, including our own.</p>',
-    createdAt: new Date('2024-05-17T09:00:00Z').getTime(),
-    ipfsUrl: 'ipfs://bafybeigdyrzt5s62f2q6e42o7733h3hzrwza4g4b3oeaby2j2g6cmjd456',
-    blockchainTx: '0x67890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12',
-    screenshotUrl: 'https://picsum.photos/seed/nature/600/400',
-    status: 'complete',
-  },
-   {
-    id: '4',
-    originalUrl: 'https://example.com/article-four',
-    title: 'Smart Cities: Technology and Urban Life',
-    content: '<h1>Smart Cities</h1><p>How IoT and data are transforming urban environments to be more efficient and livable.</p>',
-    createdAt: new Date('2024-05-16T18:45:00Z').getTime(),
-    ipfsUrl: 'ipfs://bafybeigdyrzt5s62f2q6e42o7733h3hzrwza4g4b3oeaby2j2g6cmjd789',
-    blockchainTx: '0x34567890abcdef1234567890abcdef1234567890abcdef1234567890abcde',
-    screenshotUrl: 'https://picsum.photos/seed/city/600/400',
     status: 'complete',
   },
 ];

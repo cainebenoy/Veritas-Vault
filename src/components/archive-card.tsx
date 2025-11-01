@@ -17,11 +17,14 @@ type ArchiveCardProps = {
 };
 
 export default function ArchiveCard({ archive }: ArchiveCardProps) {
-  const formattedDate = new Date(archive.createdAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const formattedDate = (archive.createdAt && typeof archive.createdAt === 'object' && 'seconds' in archive.createdAt)
+    ? new Date((archive.createdAt as any).seconds * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : "Just now";
+
 
   return (
     <Link href={`/archives/${archive.id}`} className="group block">
