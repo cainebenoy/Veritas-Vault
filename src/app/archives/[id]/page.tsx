@@ -1,7 +1,6 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { getArchiveById } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,11 +20,10 @@ export default async function ArchivePage({ params }: PageProps) {
   if (!archive) {
     notFound();
   }
-
-  const headersList = headers();
-  const host = headersList.get('host') || '';
-  const protocol = host.startsWith('localhost') ? 'http' : 'https';
-  const pageUrl = `${protocol}://${host}/archives/${archive.id}`;
+  
+  // Use the reliable public app URL from environment variables
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const pageUrl = `${appUrl}/archives/${archive.id}`;
   
   // This function safely handles date conversion from various formats.
   const getDate = () => {
