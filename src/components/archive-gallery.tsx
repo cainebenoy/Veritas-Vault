@@ -114,11 +114,9 @@ export default function ArchiveGallery() {
                       className="pl-10 h-11"
                   />
               </div>
-              <form action={handleClearAll}>
-                <Button variant="destructive" size="icon" type="submit" aria-label="Clear all archives">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </form>
+              <Button variant="destructive" size="icon" onClick={handleClearAll} aria-label="Clear all archives">
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
       </div>
 
