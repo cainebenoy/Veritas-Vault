@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useState, useRef, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { archiveUrl } from '@/lib/actions';
 import type { ArchiveState, ArchiveStatus } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,7 @@ function SubmitButton() {
 }
 
 export default function ArchiveForm() {
-  const [state, formAction] = useFormState(archiveUrl, initialState);
+  const [state, formAction] = useActionState(archiveUrl, initialState);
   const { pending } = useFormStatus();
   const [currentProgress, setCurrentProgress] = useState<ArchiveStatus>('idle');
   const formRef = useRef<HTMLFormElement>(null);
