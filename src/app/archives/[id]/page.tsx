@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle, Tag } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Archive } from '@/lib/types';
-import ArchiveQRCode from '@/components/archive-qrcode';
 
 type PageProps = {
   params: { id: string };
@@ -20,10 +19,6 @@ export default async function ArchivePage({ params }: PageProps) {
   if (!archive) {
     notFound();
   }
-  
-  // Use the reliable public app URL from environment variables
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const pageUrl = `${appUrl}/archives/${archive.id}`;
   
   // This function safely handles date conversion from various formats.
   const getDate = () => {
@@ -159,9 +154,6 @@ export default async function ArchivePage({ params }: PageProps) {
                 </ul>
               </CardContent>
             </Card>
-
-            <ArchiveQRCode url={pageUrl} />
-            
           </div>
         </div>
       </div>
