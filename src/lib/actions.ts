@@ -3,8 +3,10 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, query, orderBy, limit, setDoc } from 'firebase/firestore';
 import type { Archive, ArchiveState, ArchiveContent } from './types';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 // Simulate a database fetch
 export async function getArchives(): Promise<Archive[]> {
@@ -120,12 +122,33 @@ export async function archiveUrl(
         status: 'complete' as const,
     };
 
-    const docRef = await addDoc(archivesCollection, newArchiveData);
+    const docRef = await addDoc(archivesCollection, newArchiveData)
+      .catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: archivesCollection.path,
+          operation: 'create',
+          requestResourceData: newArchiveData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw permissionError;
+      });
+
     console.log("Document written with ID: ", docRef.id);
 
     // Save the large content to a separate document
     const contentDocRef = doc(firestore, `archive_content/${docRef.id}`);
-    await contentDocRef.set({ content: pageContent });
+    const contentData = { content: pageContent };
+    
+    await setDoc(contentDocRef, contentData)
+        .catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: contentDocRef.path,
+                operation: 'create',
+                requestResourceData: contentData
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
 
 
     revalidatePath('/');
@@ -142,6 +165,10 @@ export async function archiveUrl(
     };
 
   } catch (error: any) {
+    if (error instanceof FirestorePermissionError) {
+        // Re-throw the specific error to be caught by Next.js's error boundary
+        throw error;
+    }
     console.error('Archiving failed:', error);
     return {
       status: 'error',
