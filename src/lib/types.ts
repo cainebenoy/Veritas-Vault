@@ -17,7 +17,7 @@ export type Archive = {
   ipfsUrl: string;
   blockchainTx: string;
   screenshotUrl: string;
-  status: 'complete' | 'failed';
+  status: 'complete' | 'failed' | 'pending';
   failureReason?: string;
 };
 
