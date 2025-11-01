@@ -73,9 +73,8 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
         const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
         if (ogImageMatch && ogImageMatch[1]) {
             const ogImageUrl = ogImageMatch[1];
-            if (ogImageUrl.startsWith('http')) {
-                 return new URL(ogImageUrl, baseUrl).href;
-            }
+            // Ensure the URL is absolute
+            return new URL(ogImageUrl, baseUrl).href;
         }
 
         // 2. Fallback to searching for a suitable image tag
@@ -89,9 +88,11 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
 
                 const src = srcMatch[1];
                 
+                // Skip data URIs and anything that looks like a logo
                 if (src.startsWith('data:')) continue;
                 if (src.toLowerCase().includes('logo')) continue;
 
+                // Check for minimum size if dimensions are available
                 const widthMatch = imgTag.match(/width=["'](\d+)["']/i);
                 const heightMatch = imgTag.match(/height=["'](\d+)["']/i);
                 const minSize = 150;
@@ -99,6 +100,7 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
                 if (widthMatch && parseInt(widthMatch[1], 10) < minSize) continue;
                 if (heightMatch && parseInt(heightMatch[1], 10) < minSize) continue;
                 
+                // Return the first suitable image, ensuring its URL is absolute
                 return new URL(src, baseUrl).href;
             }
         }
