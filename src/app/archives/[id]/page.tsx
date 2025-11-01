@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import type { Archive } from '@/lib/types';
 
 type PageProps = {
   params: { id: string };
 };
 
 export default async function ArchivePage({ params }: PageProps) {
-  const archive = await getArchiveById(params.id);
+  const archive: Archive & { content: string } | undefined = await getArchiveById(params.id);
 
   if (!archive) {
     notFound();
