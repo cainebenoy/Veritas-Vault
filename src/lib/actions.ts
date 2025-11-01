@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { doc, addDoc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, addDoc, setDoc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
 
