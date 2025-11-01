@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { collection, query, orderBy, limit, getDocs, startAfter, where, Query, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, where, Query, DocumentData, QueryDocumentSnapshot, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import ArchiveCard from './archive-card';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -39,12 +39,12 @@ export default function ArchiveGallery() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [archives, setArchives] = useState<Archive[]>([]);
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
-  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const { ref, inView } = useInView({ threshold: 0.1 });
   
+  // Note: Pagination with onSnapshot is more complex, so we'll load all results for now
+  // for a real-time experience, which is suitable for a hackathon.
+  // A production app might combine getDocs for pagination and a limited onSnapshot for recent items.
+
   // Debounce search term
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -53,67 +53,36 @@ export default function ArchiveGallery() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  const fetchArchives = useCallback(async (isInitialLoad = false) => {
+
+  useEffect(() => {
     if (!firestore) return;
 
-    if (isInitialLoad) {
-      setIsLoading(true);
-      setArchives([]);
-      setLastDoc(null);
-      setHasMore(true);
-    } else {
-      if (isFetchingMore || !hasMore) return;
-      setIsFetchingMore(true);
-    }
-    
-    let q: Query<DocumentData> = query(collection(firestore, 'archives'), orderBy('createdAt', 'desc'));
+    setIsLoading(true);
 
+    let q = query(collection(firestore, 'archives'), orderBy('createdAt', 'desc'));
+
+    // Apply search filter if there is a search term
     if (debouncedSearchTerm) {
       // This is a prefix search. For a full-text search, a third-party service like Algolia is recommended.
-      q = query(q, 
+       q = query(q, 
           where('title', '>=', debouncedSearchTerm),
           where('title', '<=', debouncedSearchTerm + '\uf8ff')
       );
     }
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const newArchives = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Archive[];
+      setArchives(newArchives);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching real-time archives:", error);
+      setIsLoading(false);
+    });
 
-    const cursor = isInitialLoad ? null : lastDoc;
-    if (cursor) {
-      q = query(q, startAfter(cursor));
-    }
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [firestore, debouncedSearchTerm]);
 
-    q = query(q, limit(PAGE_SIZE));
-
-    try {
-      const documentSnapshots = await getDocs(q);
-      const newArchives = documentSnapshots.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Archive[];
-      const newLastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
-
-      setArchives(prev => isInitialLoad ? newArchives : [...prev, ...newArchives]);
-      setLastDoc(newLastDoc);
-      setHasMore(newArchives.length === PAGE_SIZE);
-
-    } catch (error) {
-      console.error("Error fetching archives:", error);
-    } finally {
-      if (isInitialLoad) setIsLoading(false);
-      setIsFetchingMore(false);
-    }
-  }, [firestore, debouncedSearchTerm, isFetchingMore, hasMore, lastDoc]);
-
-  // Effect for initial load and when search term changes
-  useEffect(() => {
-    if (firestore) {
-      fetchArchives(true);
-    }
-    // We only want this to run when the debounced search term changes, or on initial load.
-  }, [debouncedSearchTerm, firestore]);
-
-  // Effect for infinite scroll
-  useEffect(() => {
-    if (inView && !isLoading && !isFetchingMore && hasMore) {
-      fetchArchives(false);
-    }
-  }, [inView, isLoading, isFetchingMore, hasMore, fetchArchives]);
 
   return (
     <section>
@@ -153,13 +122,7 @@ export default function ArchiveGallery() {
         </div>
       )}
       
-      {/* This div is the trigger for infinite scrolling */}
-      <div ref={ref} className="h-8 flex justify-center items-center mt-8">
-        {isFetchingMore && <Loader className="h-6 w-6 animate-spin text-primary" />}
-        {!hasMore && !isLoading && archives.length > 0 && (
-          <p className="text-muted-foreground text-sm">You've reached the end.</p>
-        )}
-      </div>
+       {/* Since we're using onSnapshot to show all results in real-time, the 'Load More' feature is no longer needed. */}
     </section>
   );
 }
