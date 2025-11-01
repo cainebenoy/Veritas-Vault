@@ -19,6 +19,7 @@ export type Archive = {
   screenshotUrl: string;
   archiveStatus: 'complete' | 'failed' | 'pending';
   failureReason?: string;
+  tags?: string[];
 };
 
 export type ArchiveContent = {

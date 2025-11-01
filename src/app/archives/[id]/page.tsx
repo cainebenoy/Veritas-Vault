@@ -5,7 +5,7 @@ import { getArchiveById } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle, Tag } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Archive } from '@/lib/types';
 
@@ -84,9 +84,22 @@ export default async function ArchivePage({ params }: PageProps) {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary mt-6 font-headline break-words">
             {archive.title}
           </h1>
-            {archive.archiveStatus === 'complete' && <Badge variant="secondary" className="mt-4">Archive Complete</Badge>}
-            {archive.archiveStatus === 'failed' && <Badge variant="destructive" className="mt-4">Archive Failed</Badge>}
-            {archive.archiveStatus === 'pending' && <Badge variant="outline" className="mt-4">Archive In Progress...</Badge>}
+            <div className="flex flex-wrap items-center gap-4 mt-4">
+                {archive.archiveStatus === 'complete' && <Badge variant="secondary">Archive Complete</Badge>}
+                {archive.archiveStatus === 'failed' && <Badge variant="destructive">Archive Failed</Badge>}
+                {archive.archiveStatus === 'pending' && <Badge variant="outline">Archive In Progress...</Badge>}
+                
+                {archive.tags && archive.tags.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        {archive.tags.map(tag => (
+                            <Badge key={tag} variant="outline" className="font-normal">
+                                <Tag className="mr-1 h-3 w-3" />
+                                {tag}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+            </div>
         </header>
 
         {archive.archiveStatus === 'failed' && (

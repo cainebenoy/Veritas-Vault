@@ -102,21 +102,29 @@ export async function archiveUrl(
   prevState: ArchiveState,
   formData: FormData
 ): Promise<ArchiveState> {
-  const validatedFields = z.object({
+  const schema = z.object({
     url: z.string().url({ message: 'Please enter a valid URL.' }),
-  }).safeParse({
+    tags: z.string().optional(),
+  });
+
+  const validatedFields = schema.safeParse({
     url: formData.get('url'),
+    tags: formData.get('tags'),
   });
 
   if (!validatedFields.success) {
+    const errors = validatedFields.error.flatten().fieldErrors;
     return {
       result: 'error',
-      message: validatedFields.error.flatten().fieldErrors.url?.[0] || 'Invalid input.',
+      message: errors.url?.[0] || errors.tags?.[0] || 'Invalid input.',
     };
   }
   
-  const url = validatedFields.data.url;
-  
+  const { url, tags: tagsString } = validatedFields.data;
+  const tags = tagsString
+    ? tagsString.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean)
+    : [];
+
   const { firestore } = getFirebase();
   const tempDocRef = doc(collection(firestore, 'archives'));
 
@@ -127,6 +135,7 @@ export async function archiveUrl(
       createdAt: serverTimestamp(),
       archiveStatus: 'pending',
       screenshotUrl: null,
+      tags: tags.length > 0 ? tags : [],
   });
   revalidatePath('/');
 
@@ -169,6 +178,7 @@ export async function archiveUrl(
         blockchainTx: txHash,
         screenshotUrl: screenshotUrl,
         archiveStatus: 'complete' as const,
+        tags: tags,
     };
     
     await setDoc(tempDocRef, finalArchiveData, { merge: true });

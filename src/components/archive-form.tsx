@@ -7,7 +7,7 @@ import { archiveUrl } from '@/lib/actions';
 import type { ArchiveState, ArchiveStatus } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Globe,
@@ -40,7 +40,7 @@ const progressSteps: { name: ArchiveStatus; label: string; icon: React.ReactNode
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full md:w-auto">
+    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
       {pending ? (
         <>
           <Loader className="mr-2 h-4 w-4 animate-spin" />
@@ -144,26 +144,47 @@ export default function ArchiveForm() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <form ref={formRef} action={formAction} className="flex flex-col md:flex-row items-center gap-4">
-          <div className="w-full">
-            <Input
-              id="url"
-              name="url"
-              type="url"
-              placeholder="https://example.com/article-to-preserve"
-              required
-              className="h-12 text-base"
-            />
-          </div>
-          <SubmitButton />
-        </form>
-        {state.result === 'error' && state.message && (
-          <p className="mt-2 text-sm text-destructive">{state.message}</p>
-        )}
-      </CardContent>
+      <form ref={formRef} action={formAction}>
+        <CardHeader>
+          <CardTitle className="text-xl">Create a New Archive</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <label htmlFor="url" className="text-sm font-medium">URL to Archive</label>
+                <Input
+                id="url"
+                name="url"
+                type="url"
+                placeholder="https://example.com/article-to-preserve"
+                required
+                className="h-12 text-base"
+                />
+            </div>
+            <div className="space-y-2">
+                <label htmlFor="tags" className="text-sm font-medium">Tags (optional)</label>
+                <Input
+                    id="tags"
+                    name="tags"
+                    type="text"
+                    placeholder="tech, politics, research (comma-separated)"
+                    className="h-12 text-base"
+                />
+            </div>
+
+            {state.result === 'error' && state.message && (
+            <p className="mt-2 text-sm text-destructive">{state.message}</p>
+            )}
+        </CardContent>
+        <CardFooter className="flex-col items-stretch sm:flex-row sm:justify-between sm:items-center gap-4">
+           <div>
+             {/* This space can be used for messages or kept empty */}
+           </div>
+            <SubmitButton />
+        </CardFooter>
+      </form>
+      
       {state.result === 'success' && state.data && (
-        <CardFooter>
+        <div className="p-6 pt-0">
             <Alert className="w-full bg-accent/30">
               <CheckCircle2 className="h-4 w-4" />
               <AlertTitle>Archive Created!</AlertTitle>
@@ -187,7 +208,7 @@ export default function ArchiveForm() {
                 </Link>
               </AlertDescription>
             </Alert>
-        </CardFooter>
+        </div>
       )}
     </Card>
   );

@@ -10,14 +10,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar } from 'lucide-react';
+import { Calendar, Tag } from 'lucide-react';
 import { Badge } from './ui/badge';
 
 type ArchiveCardProps = {
   archive: Archive;
+  onTagClick?: (tag: string) => void;
 };
 
-export default function ArchiveCard({ archive }: ArchiveCardProps) {
+export default function ArchiveCard({ archive, onTagClick }: ArchiveCardProps) {
     const getDate = () => {
     if (!archive.createdAt) return new Date();
     // Check if it's a Firestore Timestamp
@@ -37,6 +38,14 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
     }
     return null;
   };
+
+  const handleTagClick = (e: React.MouseEvent, tag: string) => {
+    if (onTagClick) {
+        e.preventDefault(); // Prevent navigating to the archive page
+        e.stopPropagation(); // Stop the event from bubbling up to the Link
+        onTagClick(tag);
+    }
+  }
 
   const date = getDate();
   const formattedDate = date ? date.toLocaleDateString('en-US', {
@@ -70,10 +79,27 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
             </div>
           </div>
         </CardContent>
-        <CardHeader className="flex-grow">
+        <CardHeader className="flex-grow pb-2">
           <CardTitle className="leading-tight group-hover:text-primary">{archive.title}</CardTitle>
           <CardDescription className="mt-2 truncate">{archive.originalUrl}</CardDescription>
         </CardHeader>
+        <CardContent className="flex-grow">
+            {archive.tags && archive.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {archive.tags.map(tag => (
+                        <Badge 
+                            key={tag} 
+                            variant="secondary"
+                            className={onTagClick ? "cursor-pointer hover:bg-primary/20" : ""}
+                            onClick={onTagClick ? (e) => handleTagClick(e, tag) : undefined}
+                        >
+                          <Tag className="mr-1 h-3 w-3"/>
+                          {tag}
+                        </Badge>
+                    ))}
+                </div>
+            )}
+        </CardContent>
         <CardFooter>
           <div className="flex items-center text-sm text-muted-foreground">
             <Calendar className="mr-2 h-4 w-4" />
