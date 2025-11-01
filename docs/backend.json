@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Archive": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Archive",
+      "type": "object",
+      "description": "Represents an archived URL and its associated data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the archive entry."
+        },
+        "originalUrl": {
+          "type": "string",
+          "description": "The original URL that was archived.",
+          "format": "uri"
+        },
+        "archiveTimestamp": {
+          "type": "string",
+          "description": "The date and time when the URL was archived.",
+          "format": "date-time"
+        },
+        "ipfsCid": {
+          "type": "string",
+          "description": "The IPFS Content Identifier (CID) where the archived content is stored."
+        },
+        "polygonTransactionHash": {
+          "type": "string",
+          "description": "The transaction hash on the Polygon blockchain that notarizes the archiving."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the archived content."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the archive process, e.g., 'pending', 'archived', 'failed'."
+        }
+      },
+      "required": [
+        "id",
+        "originalUrl",
+        "archiveTimestamp",
+        "ipfsCid",
+        "polygonTransactionHash",
+        "title",
+        "status"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/archives/{archiveId}",
+        "definition": {
+          "entityName": "Archive",
+          "schema": {
+            "$ref": "#/backend/entities/Archive"
+          },
+          "description": "Stores archive data for a specific user. Only the user with the corresponding userId can access this data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "archiveId",
+              "description": "The unique identifier of the archive entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to store archived URLs and related metadata. Each user has their own collection of archives, ensuring data isolation and simplified security rules.  Authorization Independence is achieved by using path-based ownership.  Since only the user should be able to view and edit their own archives, no denormalization is required.  QAPs are satisfied by segregating data into user-specific collections, guaranteeing that listing archives only returns the archives owned by the authenticated user, eliminating the need for filtering based on user ID within the rules."
+  }
+}
