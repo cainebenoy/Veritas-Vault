@@ -1,12 +1,12 @@
 
 'use server';
 
+import 'dotenv/config';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
 import { doc, addDoc, setDoc, serverTimestamp, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import type { ArchiveState } from './types';
-import 'dotenv/config';
 
 // NOTE: This is a high-fidelity simulation. In a real production app,
 // the following functions would interact with actual backend services.
@@ -87,7 +87,7 @@ async function getScreenshotUrl(url: string): Promise<string> {
   screenshotApiUrl.searchParams.set('url', url);
   screenshotApiUrl.searchParams.set('full_page', 'false');
   screenshotApiUrl.searchParams.set('viewport_width', '1200');
-  screenshotApiUrl.searchParams.set('viewport_height', '630');
+  screenshotApiUrl.search_params.set('viewport_height', '630');
   screenshotApiUrl.searchParams.set('block_ads', 'true');
   screenshotApiUrl.searchParams.set('block_cookie_banners', 'true');
   screenshotApiUrl.searchParams.set('cache', 'false'); // Use cache:false to get fresh screenshots for this demo
