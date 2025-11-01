@@ -1,4 +1,5 @@
 
+'use client'
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getArchiveById } from '@/lib/actions';
@@ -8,13 +9,38 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle, Tag } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Archive } from '@/lib/types';
+import { useEffect, useState } from 'react';
 
 type PageProps = {
   params: { id: string };
 };
 
-export default async function ArchivePage({ params }: PageProps) {
-  const archive: Archive & { content: string } | undefined = await getArchiveById(params.id);
+export default function ArchivePage({ params }: PageProps) {
+  const [archive, setArchive] = useState<(Archive & { content: string }) | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArchive = async () => {
+      setLoading(true);
+      const resolvedParams = await params;
+      const archiveData = await getArchiveById(resolvedParams.id);
+      setArchive(archiveData);
+      setLoading(false);
+    };
+
+    fetchArchive();
+  }, [params]);
+
+  if (loading || archive === undefined) {
+    return (
+        <main className="flex min-h-screen w-full flex-col items-center bg-background">
+            <div className="w-full max-w-7xl px-4 py-8 md:py-12">
+                {/* Simplified skeleton or loading indicator */}
+                <p>Loading...</p>
+            </div>
+        </main>
+    );
+  }
 
   if (!archive) {
     notFound();
