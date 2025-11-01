@@ -7,6 +7,8 @@ import { getFirebase } from '@/firebase/server-init';
 import { doc, addDoc, setDoc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
+import { createPublicClient, http, getContract } from 'viem';
+import { polygonAmoy } from 'viem/chains';
 
 
 async function pinContentToPinata(content: string, title: string) {
@@ -177,8 +179,12 @@ export async function archiveUrl(
     console.log(`Content pinned to IPFS: ${ipfsUrl}`);
     
     // 3. Simulate notarizing on Polygon blockchain
+    console.log('Simulating transaction on Polygon Amoy testnet...');
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    // This is a placeholder. In a real app, this would be the result of sending a transaction.
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+    console.log(`Simulated transaction hash: ${txHash}`);
+
 
     // 4. Get Screenshot URL
     let screenshotUrl = extractImageUrlFromHtml(pageContent, url);

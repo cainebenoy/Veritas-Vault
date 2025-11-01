@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getArchiveById } from '@/lib/actions';
@@ -51,9 +52,9 @@ export default async function ArchivePage({ params }: PageProps) {
     },
     {
       icon: <ShieldCheck className="h-4 w-4" />,
-      label: 'Polygon TX',
+      label: 'Polygon Amoy TX',
       value: archive.blockchainTx ? archive.blockchainTx.substring(0, 20) + '...' : undefined,
-      href: archive.blockchainTx ? `https://polygonscan.com/tx/${archive.blockchainTx}` : undefined,
+      href: archive.blockchainTx ? `https://www.oklink.com/amoy/tx/${archive.blockchainTx}` : undefined,
     },
     {
       icon: <Calendar className="h-4 w-4" />,
