@@ -9,10 +9,9 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader, Trash2 } from 'lucide-react';
+import { Search, Loader } from 'lucide-react';
 import type { Archive } from '@/lib/types';
 import { useInView } from 'react-intersection-observer';
-import { clearAllArchives } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 const PAGE_SIZE = 6;
@@ -42,7 +41,6 @@ export default function ArchiveGallery() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [archives, setArchives] = useState<Archive[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
   
   // Note: Pagination with onSnapshot is more complex, so we'll load all results for now
   // for a real-time experience, which is suitable for a hackathon.
@@ -86,17 +84,6 @@ export default function ArchiveGallery() {
     return () => unsubscribe();
   }, [firestore, debouncedSearchTerm]);
 
-  const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL archives? This action cannot be undone.')) {
-      const result = await clearAllArchives();
-      if (result.success) {
-        toast({ title: 'Success', description: result.message });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
-      }
-    }
-  };
-
 
   return (
     <section>
@@ -104,19 +91,14 @@ export default function ArchiveGallery() {
             <h2 className="text-3xl font-bold tracking-tight text-primary font-headline">
                 Recently Archived
             </h2>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative w-full md:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                      placeholder="Search by title..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-11"
-                  />
-              </div>
-              <Button variant="destructive" size="icon" onClick={handleClearAll} aria-label="Clear all archives">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            <div className="relative w-full md:max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search by title..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-11"
+                />
             </div>
       </div>
 

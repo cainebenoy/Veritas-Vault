@@ -249,30 +249,3 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
     return undefined;
   }
 }
-
-/**
- * Deletes all archives and their content from Firestore.
- */
-export async function clearAllArchives() {
-  try {
-    console.log('Clearing all archives...');
-    const { firestore } = getFirebase();
-    const batch = writeBatch(firestore);
-    
-    const archivesSnapshot = await getDocs(collection(firestore, 'archives'));
-    
-    archivesSnapshot.forEach(doc => {
-      batch.delete(doc.ref);
-      const contentDocRef = doc(firestore, 'archive_content', doc.id);
-      batch.delete(contentDocRef);
-    });
-    
-    await batch.commit();
-    console.log(`Successfully deleted ${archivesSnapshot.size} archives.`);
-    revalidatePath('/');
-    return { success: true, message: `Deleted ${archivesSnapshot.size} archives.` };
-  } catch (error: any) {
-    console.error('Failed to clear archives:', error);
-    return { success: false, message: error.message };
-  }
-}
