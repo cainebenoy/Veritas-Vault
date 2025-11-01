@@ -125,7 +125,7 @@ export async function archiveUrl(
     ? tagsString.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean)
     : [];
 
-  const { firestore } = getFirebase();
+  const { firestore } = await getFirebase();
   const tempDocRef = doc(collection(firestore, 'archives'));
 
   // Create temporary document immediately for UI feedback
@@ -224,7 +224,7 @@ export async function archiveUrl(
  */
 export async function getArchiveById(id: string): Promise<any | undefined> {
   try {
-    const { firestore } = getFirebase();
+    const { firestore } = await getFirebase();
     const archiveDocRef = doc(firestore, `archives/${id}`);
     const contentDocRef = doc(firestore, `archive_content/${id}`);
 
