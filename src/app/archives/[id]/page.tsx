@@ -17,12 +17,10 @@ export default async function ArchivePage({ params }: PageProps) {
     notFound();
   }
 
-  const formattedDate = (archive.createdAt && typeof archive.createdAt === 'object' && 'seconds' in archive.createdAt)
-  ? new Date((archive.createdAt as any).seconds * 1000).toLocaleString('en-US', {
+  const formattedDate = new Date(archive.createdAt as number).toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
-    })
-  : "Just now";
+    });
   
   const metadataItems = [
     {

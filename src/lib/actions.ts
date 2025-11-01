@@ -2,40 +2,53 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, limit, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/firebase/server-init';
 import type { Archive, ArchiveState, ArchiveContent } from './types';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Simulate a database fetch
 export async function getArchives(): Promise<Archive[]> {
   const { firestore } = getFirebase();
-  const archivesCol = collection(firestore, 'archives');
-  const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
-  const snapshot = await getDocs(q);
+  const archivesCol = firestore.collection('archives');
+  const q = archivesCol.orderBy('createdAt', 'desc').limit(20);
+  const snapshot = await q.get();
   
   if (snapshot.empty) {
     return [];
   }
   
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Archive));
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return { 
+      id: doc.id, 
+      ...data,
+      // Convert Firestore Timestamp to a format serializable for the client
+      createdAt: (data.createdAt as FirebaseFirestore.Timestamp).toMillis(),
+    } as Archive;
+  });
 }
 
 export async function getArchiveById(id: string): Promise<(Archive & ArchiveContent) | undefined> {
   const { firestore } = getFirebase();
-  const archiveDocRef = doc(firestore, 'archives', id);
-  const contentDocRef = doc(firestore, 'archive_content', id);
+  const archiveDocRef = firestore.doc(`archives/${id}`);
+  const contentDocRef = firestore.doc(`archive_content/${id}`);
 
   const [archiveDoc, contentDoc] = await Promise.all([
-    getDoc(archiveDocRef),
-    getDoc(contentDocRef)
+    archiveDocRef.get(),
+    contentDocRef.get()
   ]);
 
-  if (!archiveDoc.exists()) {
+  if (!archiveDoc.exists) {
     return undefined;
   }
 
   const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as Archive;
-  const contentData = contentDoc.exists() ? contentDoc.data() as ArchiveContent : { content: '' };
+  // Convert timestamp for client
+  if (archiveData.createdAt && typeof (archiveData.createdAt as any).toMillis === 'function') {
+    archiveData.createdAt = (archiveData.createdAt as any).toMillis();
+  }
+  
+  const contentData = contentDoc.exists ? (contentDoc.data() as ArchiveContent) : { content: '' };
 
   return {
     ...archiveData,
@@ -95,24 +108,24 @@ export async function archiveUrl(
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
     // 4. Save to Firestore
-    const archivesCollection = collection(firestore, 'archives');
+    const archivesCollection = firestore.collection('archives');
     
-    const newArchiveData: Omit<Archive, 'id'> = {
+    const newArchiveData: Omit<Archive, 'id' | 'createdAt'> & { createdAt: FieldValue } = {
         originalUrl: url,
         title: pageTitle,
-        createdAt: serverTimestamp(), // Use server timestamp
+        createdAt: FieldValue.serverTimestamp(), // Use server timestamp
         ipfsUrl: ipfsUrl,
         blockchainTx: txHash,
         screenshotUrl: `https://picsum.photos/seed/${Math.random()}/600/400`,
         status: 'complete',
     };
 
-    const docRef = await addDoc(archivesCollection, newArchiveData);
+    const docRef = await archivesCollection.add(newArchiveData);
     console.log("Document written with ID: ", docRef.id);
 
     // Save the large content to a separate document
-    const contentDocRef = doc(firestore, 'archive_content', docRef.id);
-    await setDoc(contentDocRef, { content: pageContent });
+    const contentDocRef = firestore.doc(`archive_content/${docRef.id}`);
+    await contentDocRef.set({ content: pageContent });
 
 
     revalidatePath('/');

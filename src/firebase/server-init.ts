@@ -21,6 +21,8 @@ function getFirebase(): FirebaseAdminServices {
     };
   }
 
+  // When running in a Google Cloud environment, the SDK can auto-discover
+  // the project ID and credentials. Otherwise, we fall back to the config.
   const app = initializeApp({
     projectId: firebaseConfig.projectId,
   });
