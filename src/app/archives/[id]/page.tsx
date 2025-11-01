@@ -20,24 +20,26 @@ export default async function ArchivePage({ params }: PageProps) {
     notFound();
   }
   
+  // This function safely handles date conversion from various formats.
   const getDate = () => {
     if (!archive.createdAt) return null;
-    // Check if it's a Firestore Timestamp
-    if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
+
+    // Handle Firestore Timestamp object (if it's not pre-serialized)
+    if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt && typeof archive.createdAt.toMillis === 'function') {
       return new Date(archive.createdAt.toMillis());
     }
-    // Assume it's already a number (milliseconds) if passed from server action
+    // Handle number (milliseconds from server action)
     if (typeof archive.createdAt === 'number') {
         return new Date(archive.createdAt);
     }
-    // Handle string date
+    // Handle ISO string
     if (typeof archive.createdAt === 'string') {
         const date = new Date(archive.createdAt);
         if (!isNaN(date.getTime())) {
             return date;
         }
     }
-    return null; // Fallback
+    return null; // Return null if format is unrecognized
   };
   
   const date = getDate();
