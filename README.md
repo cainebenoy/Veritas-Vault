@@ -3,6 +3,10 @@
 
 This project was built for the SFLC.in Hackathon 2025, adhering to all the specified guidelines, including design, functionality, and AI usage transparency.
 
+## Live Demo
+
+**You can access the live application here:** [https://studio--studio-4214731135-f4ef1.us-central1.hosted.app/](https://studio--studio-4214731135-f4ef1.us-central1.hosted.app/)
+
 ## Key Features
 
 - **One-Click Archiving**: Simply enter a URL to save a complete snapshot of the page.
