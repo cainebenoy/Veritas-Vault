@@ -16,8 +16,18 @@ export default async function ArchivePage({ params }: PageProps) {
   if (!archive) {
     notFound();
   }
+  
+  const getDate = () => {
+    if (!archive.createdAt) return new Date();
+    // Check if it's a Firestore Timestamp (from server actions, it should be a number, but this is safer)
+    if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
+      return new Date(archive.createdAt.toMillis());
+    }
+    // Assume it's a number (milliseconds)
+    return new Date(archive.createdAt);
+  };
 
-  const formattedDate = new Date(archive.createdAt as number).toLocaleString('en-US', {
+  const formattedDate = getDate().toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
     });

@@ -18,7 +18,17 @@ type ArchiveCardProps = {
 };
 
 export default function ArchiveCard({ archive }: ArchiveCardProps) {
-  const formattedDate = new Date(archive.createdAt as number).toLocaleDateString('en-US', {
+    const getDate = () => {
+    if (!archive.createdAt) return new Date();
+    // Check if it's a Firestore Timestamp
+    if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
+      return new Date(archive.createdAt.toMillis());
+    }
+    // Assume it's a number (milliseconds)
+    return new Date(archive.createdAt);
+  };
+
+  const formattedDate = getDate().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
