@@ -128,7 +128,7 @@ export async function archiveUrl(
 
   if (!validatedFields.success) {
     return {
-      status: 'error',
+      result: 'error',
       message: validatedFields.error.flatten().fieldErrors.url?.[0] || 'Invalid input.',
     };
   }
@@ -219,7 +219,7 @@ export async function archiveUrl(
     revalidatePath(`/archives/${tempDocRef.id}`);
     
     return {
-        status: 'success',
+        result: 'success',
         message: 'Page successfully archived!',
         data: {
             archiveId: tempDocRef.id,
@@ -241,7 +241,7 @@ export async function archiveUrl(
     revalidatePath(`/archives/${tempDocRef.id}`);
     
     return {
-      status: 'error',
+      result: 'error',
       message: error.message || 'Archiving failed. The server may be blocking requests.',
     };
   }

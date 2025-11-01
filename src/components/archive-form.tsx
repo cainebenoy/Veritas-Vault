@@ -25,7 +25,7 @@ import { useAuth } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 
 const initialState: ArchiveState = {
-  status: 'idle',
+  result: 'idle',
   message: '',
 };
 
@@ -85,14 +85,14 @@ export default function ArchiveForm() {
   }, [pending]);
 
   useEffect(() => {
-    if (state.status === 'success') {
+    if (state.result === 'success') {
       toast({
         title: 'Success!',
         description: state.message,
       });
       setCurrentProgress('idle');
       formRef.current?.reset();
-    } else if (state.status === 'error') {
+    } else if (state.result === 'error') {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -157,11 +157,11 @@ export default function ArchiveForm() {
           </div>
           <SubmitButton />
         </form>
-        {state.status === 'error' && state.message && (
+        {state.result === 'error' && state.message && (
           <p className="mt-2 text-sm text-destructive">{state.message}</p>
         )}
       </CardContent>
-      {state.status === 'success' && state.data && (
+      {state.result === 'success' && state.data && (
         <CardFooter>
             <Alert className="w-full bg-accent/30">
               <CheckCircle2 className="h-4 w-4" />

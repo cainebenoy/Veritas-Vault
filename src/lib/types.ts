@@ -26,7 +26,7 @@ export type ArchiveContent = {
 }
 
 export type ArchiveState = {
-  status: 'success' | 'error' | 'idle';
+  result: 'success' | 'error' | 'idle';
   message: string;
   data?: {
     archiveId: string;
