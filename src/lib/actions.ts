@@ -3,20 +3,37 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp, setDoc, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import 'dotenv/config';
 
-// Simulate a database fetch (This function is now replaced by getArchives in archive-gallery)
-// We keep it here as a reference or for other potential server-side uses.
+
 export async function getArchives() {
   const { firestore } = getFirebase();
   const archivesCol = collection(firestore, 'archives');
-  // ... implementation to get archives if needed, for now it's handled client-side
-  return [];
+  const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return [];
+  }
+
+  const archives = snapshot.docs.map((doc) => {
+    const data = doc.data();
+    const createdAt = data.createdAt;
+    
+    return {
+      id: doc.id,
+      ...data,
+      createdAt: createdAt?.toMillis ? createdAt.toMillis() : createdAt,
+    };
+  });
+  
+  return archives;
 }
+
 
 const ArchiveUrlSchema = z.object({
   url: z.string().url({ message: 'Please enter a valid URL.' }),
@@ -63,13 +80,12 @@ async function pinContentToPinata(content: string, title: string) {
 
 async function getScreenshotUrl(url: string): Promise<string> {
     console.log(`Generating screenshot for: ${url}`);
-    // Using a simple, free screenshot API for demonstration.
-    // In production, you might use a more robust service or your own headless browser.
-    const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=free&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1280&viewport_height=720`;
-
-    // We don't need to await the fetch here for the API this app is using, 
-    // because the image is generated when the URL is first accessed.
-    // By returning the URL directly, the browser will trigger the generation.
+    const { SCREENSHOT_API_KEY } = process.env;
+    if (!SCREENSHOT_API_KEY) {
+      console.warn('Screenshot API key not found. Using placeholder.');
+      return `https://picsum.photos/seed/${Math.random()}/600/400`;
+    }
+    const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${SCREENSHOT_API_KEY}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1280&viewport_height=720&block_ads=true&block_cookie_banners=true`;
     return screenshotApiUrl;
 }
 

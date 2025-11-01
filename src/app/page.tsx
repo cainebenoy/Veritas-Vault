@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import ArchiveForm from '@/components/archive-form';
 import ArchiveGallery, { GallerySkeleton } from '@/components/archive-gallery';
 import { Logo } from '@/components/logo';
@@ -27,9 +26,8 @@ export default function Home() {
           <h2 className="text-3xl font-bold tracking-tight text-primary mb-8 font-headline">
             Recently Archived
           </h2>
-          <Suspense fallback={<GallerySkeleton />}>
-            <ArchiveGallery />
-          </Suspense>
+          {/* Suspense is no longer needed here as loading is handled inside ArchiveGallery */}
+          <ArchiveGallery />
         </section>
       </div>
     </main>

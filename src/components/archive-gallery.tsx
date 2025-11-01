@@ -1,7 +1,11 @@
-import { getArchives } from '@/lib/actions';
+'use client';
+
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import ArchiveCard from './archive-card';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Archive } from '@/lib/types';
 
 export function GallerySkeleton() {
   return (
@@ -21,8 +25,19 @@ export function GallerySkeleton() {
   );
 }
 
-export default async function ArchiveGallery() {
-  const archives = await getArchives();
+export default function ArchiveGallery() {
+  const firestore = useFirestore();
+  
+  const archivesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'archives'), orderBy('createdAt', 'desc'), limit(20));
+  }, [firestore]);
+
+  const { data: archives, isLoading } = useCollection<Archive>(archivesQuery);
+
+  if (isLoading) {
+    return <GallerySkeleton />;
+  }
 
   if (!archives || archives.length === 0) {
     return (
