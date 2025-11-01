@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
