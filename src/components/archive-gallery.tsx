@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { collection, query, orderBy, limit, getDocs, startAfter, where, Query, DocumentData } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import ArchiveCard from './archive-card';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,12 +49,11 @@ export default function ArchiveGallery() {
     let q: Query<DocumentData> = query(collection(firestore, 'archives'), orderBy('createdAt', 'desc'));
 
     if (searchTerm) {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        // Firestore doesn't support case-insensitive 'contains' queries efficiently across multiple fields without a dedicated search service like Algolia.
-        // This query performs a "starts with" search on the title, which is a reasonable compromise.
+        // Firestore doesn't support case-insensitive 'contains' queries.
+        // This query performs a "starts with" search, which is a reasonable compromise.
         q = query(q, 
-            where('title', '>=', lowerCaseSearchTerm),
-            where('title', '<=', lowerCaseSearchTerm + '\uf8ff')
+            where('title', '>=', searchTerm),
+            where('title', '<=', searchTerm + '\uf8ff')
         );
     }
     

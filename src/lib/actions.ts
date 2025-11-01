@@ -144,7 +144,7 @@ export async function archiveUrl(
       title: `Archiving: ${url}`,
       createdAt: serverTimestamp(),
       status: 'pending',
-      screenshotUrl: `https://picsum.photos/seed/${tempDocRef.id}/600/400`,
+      screenshotUrl: null,
   });
   console.log("Created temporary document with ID: ", tempDocRef.id);
   revalidatePath('/'); // Trigger UI update to show pending card
