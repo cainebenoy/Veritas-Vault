@@ -98,7 +98,7 @@ export default function ArchiveGallery() {
         setIsLoading(false);
         setIsFetchingMore(false);
     }
-  }, [firestore, hasMore, isFetchingMore, buildQuery, lastDoc]);
+  }, [firestore, hasMore, isFetchingMore, buildQuery]);
 
   // Initial fetch and search fetch
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function ArchiveGallery() {
         }
     }, 300); // Debounce search
     return () => clearTimeout(handler);
-  }, [searchTerm, firestore, fetchArchives]);
+  }, [searchTerm, firestore]);
 
   // Infinite scroll
   useEffect(() => {
@@ -162,9 +162,7 @@ export default function ArchiveGallery() {
                     Loading...
                 </Button>
             ) : hasMore && !isLoading && archives.length > 0 ? (
-                <Button onClick={() => fetchArchives()} variant="outline">
-                    Load More
-                </Button>
+                 <div className="h-8"></div>
             ) : (
                 !isLoading && archives.length > 0 && <p className="text-muted-foreground text-sm">You've reached the end.</p>
             )}
