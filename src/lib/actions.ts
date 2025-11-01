@@ -3,14 +3,12 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, setDoc, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp, setDoc, getDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import type { ArchiveState } from './types';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 import 'dotenv/config';
 
 
-export async function getArchives() {
+async function getArchives() {
   const { firestore } = getFirebase();
   const archivesCol = collection(firestore, 'archives');
   const q = query(archivesCol, orderBy('createdAt', 'desc'), limit(20));
@@ -78,15 +76,32 @@ async function pinContentToPinata(content: string, title: string) {
   return responseData.IpfsHash;
 }
 
-async function getScreenshotUrl(url: string): Promise<string> {
-    console.log(`Generating screenshot for: ${url}`);
-    const { SCREENSHOT_API_KEY } = process.env;
-    if (!SCREENSHOT_API_KEY) {
-      console.warn('Screenshot API key not found. Using placeholder.');
-      return `https://picsum.photos/seed/${Math.random()}/600/400`;
+function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string {
+    try {
+        // 1. Prioritize Open Graph image
+        const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
+        if (ogImageMatch && ogImageMatch[1]) {
+            console.log('Found og:image:', ogImageMatch[1]);
+            return new URL(ogImageMatch[1], baseUrl).href;
+        }
+
+        // 2. Fallback to the first image tag in the body
+        const bodyMatch = pageContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        if (bodyMatch) {
+            const imgTagMatch = bodyMatch[1].match(/<img[^>]+src=["'](.*?)["']/i);
+            if (imgTagMatch && imgTagMatch[1]) {
+                console.log('Found first img tag:', imgTagMatch[1]);
+                return new URL(imgTagMatch[1], baseUrl).href;
+            }
+        }
+        
+    } catch (e) {
+        console.error('Error parsing image from HTML, falling back to placeholder.', e);
     }
-    const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${SCREENSHOT_API_KEY}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1280&viewport_height=720&block_ads=true&block_cookie_banners=true`;
-    return screenshotApiUrl;
+    
+    // 3. If nothing is found, use a placeholder
+    console.log('No suitable image found, using placeholder.');
+    return `https://picsum.photos/seed/${Math.random()}/600/400`;
 }
 
 
@@ -137,8 +152,8 @@ export async function archiveUrl(
     await new Promise((resolve) => setTimeout(resolve, 2500));
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-    // 4. Get Screenshot URL
-    const screenshotUrl = await getScreenshotUrl(url);
+    // 4. Get Screenshot URL by extracting from the page content
+    const screenshotUrl = extractImageUrlFromHtml(pageContent, url);
 
     // 5. Save to Firestore
     const archivesCollection = collection(firestore, 'archives');
@@ -153,32 +168,14 @@ export async function archiveUrl(
         status: 'complete' as const,
     };
 
-    const docRef = await addDoc(archivesCollection, newArchiveData)
-      .catch(serverError => {
-        const permissionError = new FirestorePermissionError({
-          path: archivesCollection.path,
-          operation: 'create',
-          requestResourceData: newArchiveData
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-      });
+    const docRef = await addDoc(archivesCollection, newArchiveData);
 
     console.log("Document written with ID: ", docRef.id);
 
     const contentDocRef = doc(firestore, `archive_content/${docRef.id}`);
     const contentData = { content: pageContent };
     
-    await setDoc(contentDocRef, contentData)
-        .catch(serverError => {
-            const permissionError = new FirestorePermissionError({
-                path: contentDocRef.path,
-                operation: 'create',
-                requestResourceData: contentData
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw permissionError;
-        });
+    await setDoc(contentDocRef, contentData);
 
 
     revalidatePath('/');
@@ -195,9 +192,6 @@ export async function archiveUrl(
     };
 
   } catch (error: any) {
-    if (error instanceof FirestorePermissionError) {
-        throw error;
-    }
     console.error('Archiving failed:', error);
     return {
       status: 'error',
