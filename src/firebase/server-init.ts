@@ -9,32 +9,27 @@ interface FirebaseAdminServices {
   firestore: Firestore;
 }
 
-let adminServices: FirebaseAdminServices | null = null;
-
+// This function initializes and returns the Firebase Admin SDK services.
+// It ensures that initialization only happens once.
 function getFirebase(): FirebaseAdminServices {
-  if (adminServices) {
-    return adminServices;
-  }
-
   if (getApps().length > 0) {
     const app = getApp();
-    adminServices = {
+    return {
       app,
       auth: getAuth(app),
       firestore: getFirestore(app),
     };
-    return adminServices;
   }
 
-  const app = initializeApp({ projectId: firebaseConfig.projectId });
+  const app = initializeApp({
+    projectId: firebaseConfig.projectId,
+  });
 
-  adminServices = {
+  return {
     app,
     auth: getAuth(app),
     firestore: getFirestore(app),
   };
-  
-  return adminServices;
 }
 
 export { getFirebase };
