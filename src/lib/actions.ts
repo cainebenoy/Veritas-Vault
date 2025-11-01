@@ -18,8 +18,6 @@ export async function getArchives() {
   return [];
 }
 
-// ... getArchiveById remains the same
-
 const ArchiveUrlSchema = z.object({
   url: z.string().url({ message: 'Please enter a valid URL.' }),
 });
@@ -61,6 +59,18 @@ async function pinContentToPinata(content: string, title: string) {
 
   const responseData = await res.json();
   return responseData.IpfsHash;
+}
+
+async function getScreenshotUrl(url: string): Promise<string> {
+    console.log(`Generating screenshot for: ${url}`);
+    // Using a simple, free screenshot API for demonstration.
+    // In production, you might use a more robust service or your own headless browser.
+    const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=free&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1280&viewport_height=720`;
+
+    // We don't need to await the fetch here for the API this app is using, 
+    // because the image is generated when the URL is first accessed.
+    // By returning the URL directly, the browser will trigger the generation.
+    return screenshotApiUrl;
 }
 
 
@@ -111,7 +121,10 @@ export async function archiveUrl(
     await new Promise((resolve) => setTimeout(resolve, 2500));
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-    // 4. Save to Firestore
+    // 4. Get Screenshot URL
+    const screenshotUrl = await getScreenshotUrl(url);
+
+    // 5. Save to Firestore
     const archivesCollection = collection(firestore, 'archives');
     
     const newArchiveData = {
@@ -120,7 +133,7 @@ export async function archiveUrl(
         createdAt: serverTimestamp(),
         ipfsUrl: ipfsUrl,
         blockchainTx: txHash,
-        screenshotUrl: `https://picsum.photos/seed/${Math.random()}/600/400`,
+        screenshotUrl: screenshotUrl,
         status: 'complete' as const,
     };
 
