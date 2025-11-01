@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,8 @@
     --popover: 220 13% 10%;
     --popover-foreground: 210 20% 98%;
     
-    --primary: 203 82% 43%; /* SFLC.in Blue: #1486c9 */
+    /* SFLC.in Blue: #1486c9 */
+    --primary: 203 82% 43%; 
     --primary-foreground: 210 20% 98%;
 
     --secondary: 215 28% 17%;
@@ -34,6 +36,7 @@
     
     --radius: 0.5rem;
   }
+ 
   .dark {
     --background: 220 13% 10%;
     --foreground: 210 20% 98%;
@@ -44,7 +47,8 @@
     --popover: 220 13% 10%;
     --popover-foreground: 210 20% 98%;
     
-    --primary: 203 82% 43%; /* SFLC.in Blue: #1486c9 */
+    /* SFLC.in Blue: #1486c9 */
+    --primary: 203 82% 43%; 
     --primary-foreground: 210 20% 98%;
 
     --secondary: 215 28% 17%;

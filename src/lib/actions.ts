@@ -7,115 +7,97 @@ import { getFirebase } from '@/firebase/server-init';
 import { doc, addDoc, setDoc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
-import { createPublicClient, http, getContract } from 'viem';
-import { polygonAmoy } from 'viem/chains';
 
+// NOTE: This is a high-fidelity simulation. In a real production app,
+// the following functions would interact with actual backend services.
+// The documentation in DECISIONS.md outlines the path to production.
 
-async function pinContentToPinata(content: string, title: string) {
+/**
+ * Simulates pinning content to an IPFS service like Pinata.
+ * In a real app, this would make an API call to Pinata.
+ * @returns A simulated IPFS CID hash.
+ */
+async function pinContentToIpfs(content: string, title: string): Promise<string> {
+  console.log('Simulating IPFS Pinning...');
   const { PINATA_API_KEY, PINATA_SECRET_API_KEY } = process.env;
 
-  if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
-    console.warn('Pinata API keys not found. Simulating IPFS upload.');
-    // Fallback to simulation if keys are not provided
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const randomHash = [...Array(46)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-    return `bafybei${randomHash}`;
-  }
-  
-  const pinataData = JSON.stringify({
-    pinataContent: {
-      title: title,
-      html: content,
-    },
-    pinataMetadata: {
-      name: `${title.replace(/[^a-zA-Z0-9]/g, '-')}.json`,
-    },
-    pinataOptions: {
-      cidVersion: 1,
+  // If Pinata keys are present, use them. Otherwise, simulate.
+  if (PINATA_API_KEY && PINATA_SECRET_API_KEY) {
+    try {
+      const pinataData = JSON.stringify({
+        pinataContent: { title: title, html: content },
+        pinataMetadata: { name: `${title.replace(/[^a-zA-Z0-9]/g, '-')}.json` },
+        pinataOptions: { cidVersion: 1 }
+      });
+      const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'pinata_api_key': PINATA_API_KEY,
+          'pinata_secret_api_key': PINATA_SECRET_API_KEY,
+        },
+        body: pinataData,
+      });
+      if (!res.ok) throw new Error(`Pinata API Error: ${res.statusText}`);
+      const responseData = await res.json();
+      console.log('Successfully pinned to Pinata:', responseData.IpfsHash);
+      return responseData.IpfsHash;
+    } catch (error) {
+      console.warn('Pinata upload failed, falling back to simulation.', error);
     }
-  });
-
-  const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'pinata_api_key': PINATA_API_KEY,
-      'pinata_secret_api_key': PINATA_SECRET_API_KEY,
-    },
-    body: pinataData,
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.text();
-    throw new Error(`Failed to pin content to Pinata: ${res.status} ${res.statusText} - ${errorBody}`);
   }
 
-  const responseData = await res.json();
-  return responseData.IpfsHash;
+  // Fallback simulation
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const randomHash = [...Array(46)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+  return `bafybei${randomHash}`;
+}
+
+/**
+ * Simulates generating a blockchain transaction hash.
+ * In a real app, this would involve a library like `viem` to interact with a smart contract.
+ * @returns A simulated Polygon transaction hash.
+ */
+async function notarizeOnBlockchain(ipfsHash: string): Promise<string> {
+  console.log('Simulating blockchain notarization...');
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+  console.log(`Simulated TX Hash for IPFS hash ${ipfsHash}: ${txHash}`);
+  return txHash;
 }
 
 
-async function getScreenshotUrl(url: string) {
+/**
+ * Gets a screenshot URL for the given page URL.
+ * Uses a real service (ScreenshotOne) if an API key is provided, otherwise returns a placeholder.
+ * @returns A URL for a screenshot image.
+ */
+async function getScreenshotUrl(url: string): Promise<string> {
   const screenshotOneApiKey = process.env.SCREENSHOTONE_API_KEY;
   if (!screenshotOneApiKey) {
     console.warn("ScreenshotOne API key not found. Using placeholder image.");
-    return `https://picsum.photos/seed/${Math.random()}/600/400`;
+    // Generate a consistent placeholder based on the URL hash
+    const seed = Array.from(url).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return `https://picsum.photos/seed/${seed}/600/400`;
   }
   
   // Use a reliable screenshot service
-  const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${screenshotOneApiKey}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1200&viewport_height=630&block_ads=true&block_cookie_banners=true`;
+  const screenshotApiUrl = new URL('https://api.screenshotone.com/take');
+  screenshotApiUrl.searchParams.set('access_key', screenshotOneApiKey);
+  screenshotApiUrl.searchParams.set('url', url);
+  screenshotApiUrl.searchParams.set('full_page', 'false');
+  screenshotApiUrl.searchParams.set('viewport_width', '1200');
+  screenshotApiUrl.searchParams.set('viewport_height', '630');
+  screenshotApiUrl.searchParams.set('block_ads', 'true');
+  screenshotApiUrl.searchParams.set('block_cookie_banners', 'true');
+  screenshotApiUrl.searchParams.set('cache', 'false'); // Use cache:false to get fresh screenshots for this demo
 
-  // No need to fetch, the URL itself is what we store
-  return screenshotApiUrl;
+  return screenshotApiUrl.toString();
 }
 
-function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string | null {
-    try {
-        // 1. Prioritize Open Graph image
-        const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
-        if (ogImageMatch && ogImageMatch[1]) {
-            const ogImageUrl = ogImageMatch[1];
-            // Ensure the URL is absolute
-            return new URL(ogImageUrl, baseUrl).href;
-        }
-
-        // 2. Fallback to searching for a suitable image tag
-        const bodyMatch = pageContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        if (bodyMatch) {
-            const imgTags = bodyMatch[1].match(/<img[^>]+>/gi) || [];
-            
-            for (const imgTag of imgTags) {
-                const srcMatch = imgTag.match(/src=["'](.*?)["']/i);
-                if (!srcMatch || !srcMatch[1]) continue;
-
-                const src = srcMatch[1];
-                
-                // Skip data URIs and anything that looks like a logo
-                if (src.startsWith('data:')) continue;
-                if (src.toLowerCase().includes('logo')) continue;
-
-                // Check for minimum size if dimensions are available
-                const widthMatch = imgTag.match(/width=["'](\d+)["']/i);
-                const heightMatch = imgTag.match(/height=["'](\d+)["']/i);
-                const minSize = 150;
-
-                if (widthMatch && parseInt(widthMatch[1], 10) < minSize) continue;
-                if (heightMatch && parseInt(heightMatch[1], 10) < minSize) continue;
-                
-                // Return the first suitable image, ensuring its URL is absolute
-                return new URL(src, baseUrl).href;
-            }
-        }
-        
-    } catch (e) {
-        console.error('Error parsing image from HTML.', e);
-    }
-    
-    // 3. If nothing is found, return null
-    return null;
-}
-
-
+/**
+ * The main server action to archive a URL.
+ */
 export async function archiveUrl(
   prevState: ArchiveState,
   formData: FormData
@@ -146,57 +128,39 @@ export async function archiveUrl(
       archiveStatus: 'pending',
       screenshotUrl: null,
   });
-  console.log("Created temporary document with ID: ", tempDocRef.id);
-  revalidatePath('/'); // Trigger UI update to show pending card
+  revalidatePath('/');
 
   try {
     // 1. Fetch the content from the URL
     console.log(`Fetching content from: ${url}`);
     const response = await fetch(url, {
         headers: {
-            'User-Agent': 'VeritasVault/1.0; (+https://veritas-vault.example.com/bot)',
+            'User-Agent': 'VeritasVault/1.0 (+https://veritas-vault.example.com/bot)',
+            'Accept': 'text/html',
         },
+        redirect: 'follow',
     });
 
     if (!response.ok) {
         throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
     }
-
     const pageContent = await response.text();
+    const titleMatch = pageContent.match(/<title>([^<]*)<\/title>/i);
+    const pageTitle = titleMatch ? titleMatch[1].trim() : `Archived Page: ${new URL(url).hostname}`;
     
-    const titleMatch = pageContent.match(/<title>(.*?)<\/title>/i);
-    const pageTitle = titleMatch ? titleMatch[1] : `Archived Page: ${new URL(url).hostname}`;
-    console.log(`Fetched page with title: "${pageTitle}"`);
-    
-    // Update title in temp doc
     await setDoc(tempDocRef, { title: pageTitle }, { merge: true });
 
-
-    // 2. Upload to IPFS via Pinata (can be slow)
-    console.log('Uploading content to IPFS via Pinata...');
-    const ipfsHash = await pinContentToPinata(pageContent, pageTitle);
+    // 2. Upload to IPFS (Simulated)
+    const ipfsHash = await pinContentToIpfs(pageContent, pageTitle);
     const ipfsUrl = `ipfs://${ipfsHash}`;
-    console.log(`Content pinned to IPFS: ${ipfsUrl}`);
-    
-    // 3. Simulate notarizing on Polygon blockchain
-    console.log('Simulating transaction on Polygon Amoy testnet...');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    // This is a placeholder. In a real app, this would be the result of sending a transaction.
-    const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-    console.log(`Simulated transaction hash: ${txHash}`);
 
+    // 3. Notarize on Blockchain (Simulated)
+    const txHash = await notarizeOnBlockchain(ipfsHash);
 
     // 4. Get Screenshot URL
-    let screenshotUrl = extractImageUrlFromHtml(pageContent, url);
-    if (!screenshotUrl) {
-        console.log("No image found in HTML, generating a new screenshot.");
-        screenshotUrl = await getScreenshotUrl(url);
-    } else {
-        console.log(`Using extracted image as screenshot: ${screenshotUrl}`);
-    }
+    const screenshotUrl = await getScreenshotUrl(url);
 
-
-    // 5. Update document in Firestore with all data
+    // 5. Finalize document in Firestore
     const finalArchiveData = {
         originalUrl: url,
         title: pageTitle,
@@ -209,11 +173,9 @@ export async function archiveUrl(
     
     await setDoc(tempDocRef, finalArchiveData, { merge: true });
 
-    // Also store the full content separately to keep the main 'archives' collection light
+    // Store the full content separately to keep the main 'archives' collection light
     const contentDocRef = doc(firestore, 'archive_content', tempDocRef.id);
     await setDoc(contentDocRef, { content: pageContent });
-    
-    console.log("Finalized document with ID: ", tempDocRef.id);
     
     revalidatePath('/');
     revalidatePath(`/archives/${tempDocRef.id}`);
@@ -231,7 +193,7 @@ export async function archiveUrl(
   } catch (error: any) {
     console.error('Archiving failed:', error);
     
-    // Update the doc to failed archiveStatus
+    // Update the doc to failed status
     await setDoc(tempDocRef, {
         archiveStatus: 'failed',
         failureReason: error.message || 'An unknown error occurred.',
@@ -247,6 +209,9 @@ export async function archiveUrl(
   }
 }
 
+/**
+ * Fetches a single archive's metadata and content by its ID.
+ */
 export async function getArchiveById(id: string): Promise<any | undefined> {
   try {
     const { firestore } = getFirebase();
@@ -263,16 +228,9 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
     }
     
     const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
+    // Serialize Firestore Timestamp to a number (milliseconds) for client-side compatibility
     if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
       archiveData.createdAt = archiveData.createdAt.toMillis();
-    }
-    
-    // Don't fetch content if the archive failed
-    if (archiveData.archiveStatus === 'failed') {
-      return {
-        ...archiveData,
-        content: '<p>This page could not be archived.</p>'
-      };
     }
     
     const content = contentDoc.exists() 
