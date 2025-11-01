@@ -40,10 +40,24 @@ export async function archiveUrl(
   const url = validatedFields.data.url;
 
   try {
-    // 1. Simulate fetching the content from the URL
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const pageTitle = `Archived Page: ${new URL(url).hostname}`;
-    const pageContent = `<html><head><title>${pageTitle}</title></head><body><h1>Successfully archived ${url}</h1><p>This is a simulated archive of the page content.</p><p>Archived on: ${new Date().toUTCString()}</p></body></html>`;
+    // 1. Fetch the content from the URL
+    console.log(`Fetching content from: ${url}`);
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': 'VeritasVault/1.0; (+https://veritas-vault.example.com/bot)',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
+    }
+
+    const pageContent = await response.text();
+    
+    // Extract title from HTML
+    const titleMatch = pageContent.match(/<title>(.*?)<\/title>/i);
+    const pageTitle = titleMatch ? titleMatch[1] : `Archived Page: ${new URL(url).hostname}`;
+    console.log(`Fetched page with title: "${pageTitle}"`);
 
     // 2. Simulate uploading to IPFS via Pinata
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -69,6 +83,9 @@ export async function archiveUrl(
 
     // In a real app, you would save `newArchive` to your database.
     // For this simulation, we'll just pretend. We won't modify the mock data directly.
+    // We will add it to the top of the array for UI demonstration purposes.
+    mockArchives.unshift(newArchive);
+
 
     revalidatePath('/');
     
@@ -82,10 +99,11 @@ export async function archiveUrl(
         }
     };
 
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Archiving failed:', error);
     return {
       status: 'error',
-      message: 'Archiving failed. Please try again.',
+      message: error.message || 'Archiving failed. The server may be blocking requests.',
     };
   }
 }
