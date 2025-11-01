@@ -22,13 +22,7 @@ export default function Home() {
           <ArchiveForm />
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold tracking-tight text-primary mb-8 font-headline">
-            Recently Archived
-          </h2>
-          {/* Suspense is no longer needed here as loading is handled inside ArchiveGallery */}
-          <ArchiveGallery />
-        </section>
+        <ArchiveGallery />
       </div>
     </main>
   );

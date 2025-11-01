@@ -132,6 +132,20 @@ export async function archiveUrl(
   }
   
   const url = validatedFields.data.url;
+  
+  const { firestore } = getFirebase();
+  const tempDocRef = doc(collection(firestore, 'archives'));
+
+  // Create temporary document immediately for UI feedback
+  await setDoc(tempDocRef, {
+      originalUrl: url,
+      title: `Archiving: ${url}`,
+      createdAt: serverTimestamp(),
+      status: 'pending',
+      screenshotUrl: `https://picsum.photos/seed/${tempDocRef.id}/600/400`,
+  });
+  console.log("Created temporary document with ID: ", tempDocRef.id);
+  revalidatePath('/'); // Trigger UI update to show pending card
 
   try {
     // 1. Fetch the content from the URL
@@ -151,20 +165,10 @@ export async function archiveUrl(
     const titleMatch = pageContent.match(/<title>(.*?)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1] : `Archived Page: ${new URL(url).hostname}`;
     console.log(`Fetched page with title: "${pageTitle}"`);
-
-    const { firestore } = getFirebase();
     
-    // Create temporary document to show progress
-    const tempDocRef = doc(collection(firestore, 'archives'));
-    await setDoc(tempDocRef, {
-        originalUrl: url,
-        title: pageTitle,
-        createdAt: serverTimestamp(),
-        status: 'pending',
-        screenshotUrl: `https://picsum.photos/seed/${tempDocRef.id}/600/400`,
-    });
-    console.log("Created temporary document with ID: ", tempDocRef.id);
-    revalidatePath('/'); // Trigger UI update to show pending card
+    // Update title in temp doc
+    await setDoc(tempDocRef, { title: pageTitle }, { merge: true });
+
 
     // 2. Upload to IPFS via Pinata (can be slow)
     console.log('Uploading content to IPFS via Pinata...');
@@ -220,6 +224,16 @@ export async function archiveUrl(
 
   } catch (error: any) {
     console.error('Archiving failed:', error);
+    
+    // Update the doc to failed status
+    await setDoc(tempDocRef, {
+        status: 'failed',
+        failureReason: error.message || 'An unknown error occurred.',
+    }, { merge: true });
+
+    revalidatePath('/');
+    revalidatePath(`/archives/${tempDocRef.id}`);
+    
     return {
       status: 'error',
       message: error.message || 'Archiving failed. The server may be blocking requests.',
@@ -245,6 +259,14 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
     const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
     if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
       archiveData.createdAt = archiveData.createdAt.toMillis();
+    }
+    
+    // Don't fetch content if the archive failed
+    if (archiveData.status === 'failed') {
+      return {
+        ...archiveData,
+        content: '<p>This page could not be archived.</p>'
+      };
     }
     
     const content = contentDoc.exists() 

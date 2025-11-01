@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getArchiveById } from '@/lib/actions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ExternalLink, Globe, ShieldCheck } from 'lucide-react';
+import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription as AlertDialogDescription } from '@/components/ui/alert';
 
 type PageProps = {
   params: { id: string };
@@ -43,13 +44,13 @@ export default async function ArchivePage({ params }: PageProps) {
       icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
       label: 'IPFS Link',
       value: archive.ipfsUrl,
-      href: `https://ipfs.io/ipfs/${archive.ipfsUrl.replace('ipfs://', '')}`,
+      href: archive.ipfsUrl ? `https://ipfs.io/ipfs/${archive.ipfsUrl.replace('ipfs://', '')}` : undefined,
     },
     {
       icon: <ShieldCheck className="h-4 w-4" />,
       label: 'Polygon TX',
-      value: archive.blockchainTx.substring(0, 20) + '...',
-      href: `https://polygonscan.com/tx/${archive.blockchainTx}`,
+      value: archive.blockchainTx ? archive.blockchainTx.substring(0, 20) + '...' : undefined,
+      href: archive.blockchainTx ? `https://polygonscan.com/tx/${archive.blockchainTx}` : undefined,
     },
     {
       icon: <Calendar className="h-4 w-4" />,
@@ -68,8 +69,20 @@ export default async function ArchivePage({ params }: PageProps) {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary mt-6 font-headline break-words">
             {archive.title}
           </h1>
-          <Badge variant="secondary" className="mt-4">{archive.status === 'complete' ? 'Archive Complete' : 'Archive Failed'}</Badge>
+            {archive.status === 'complete' && <Badge variant="secondary" className="mt-4">Archive Complete</Badge>}
+            {archive.status === 'failed' && <Badge variant="destructive" className="mt-4">Archive Failed</Badge>}
+            {archive.status === 'pending' && <Badge variant="outline" className="mt-4">Archive In Progress...</Badge>}
         </header>
+
+        {archive.status === 'failed' && (
+          <Alert variant="destructive" className="mb-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Archiving Failed</AlertTitle>
+            <AlertDialogDescription>
+              {archive.failureReason || 'An unknown error occurred during the archiving process.'}
+            </AlertDialogDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
@@ -94,7 +107,7 @@ export default async function ArchivePage({ params }: PageProps) {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-4">
-                  {metadataItems.map(item => (
+                  {metadataItems.map(item => item.value ? (
                     <li key={item.label}>
                       <div className="flex items-center text-sm font-semibold text-muted-foreground">
                         {item.icon}
@@ -109,7 +122,7 @@ export default async function ArchivePage({ params }: PageProps) {
                         <p className="mt-1 text-sm text-foreground break-all">{item.value}</p>
                       )}
                     </li>
-                  ))}
+                  ) : null)}
                 </ul>
               </CardContent>
             </Card>
