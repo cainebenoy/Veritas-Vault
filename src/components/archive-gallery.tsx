@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, limit, getDocs, startAfter, where, Query, DocumentData, or } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, startAfter, where, Query, DocumentData } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import ArchiveCard from './archive-card';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -50,13 +50,11 @@ export default function ArchiveGallery() {
 
     if (searchTerm) {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        // Firestore doesn't support case-insensitive 'contains' queries efficiently across multiple fields without a dedicated search service like Algolia.
+        // This query performs a "starts with" search on the title, which is a reasonable compromise.
         q = query(q, 
-            or(
-                where('title', '>=', lowerCaseSearchTerm),
-                where('title', '<=', lowerCaseSearchTerm + '\uf8ff'),
-                where('originalUrl', '>=', lowerCaseSearchTerm),
-                where('originalUrl', '<=', lowerCaseSearchTerm + '\uf8ff')
-            )
+            where('title', '>=', lowerCaseSearchTerm),
+            where('title', '<=', lowerCaseSearchTerm + '\uf8ff')
         );
     }
     
@@ -69,7 +67,7 @@ export default function ArchiveGallery() {
 
 
   const fetchArchives = useCallback(async (isInitial = false) => {
-    if (!firestore || !hasMore || isFetchingMore) return;
+    if (!firestore || (!hasMore && !isInitial) || isFetchingMore) return;
 
     if (isInitial) {
         setIsLoading(true);
@@ -81,7 +79,11 @@ export default function ArchiveGallery() {
     }
 
     const q = buildQuery(isInitial ? null : lastDoc);
-    if (!q) return;
+    if (!q) {
+      setIsLoading(false);
+      setIsFetchingMore(false);
+      return
+    };
 
     try {
       const documentSnapshots = await getDocs(q);
@@ -107,7 +109,7 @@ export default function ArchiveGallery() {
         }
     }, 300); // Debounce search
     return () => clearTimeout(handler);
-  }, [searchTerm, firestore]);
+  }, [searchTerm, firestore, fetchArchives]);
 
   // Infinite scroll
   useEffect(() => {
@@ -125,7 +127,7 @@ export default function ArchiveGallery() {
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search archives..."
+                    placeholder="Search by title..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
