@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebase } from '@/firebase/server-init';
-import { collection, doc, addDoc, serverTimestamp, setDoc, getDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, addDoc, serverTimestamp, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import type { ArchiveState } from './types';
 import 'dotenv/config';
 
@@ -46,12 +46,14 @@ async function pinContentToPinata(content: string, title: string) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     return `bafybei${Math.random().toString(36).substring(2)}`;
   }
+  
+  const pinataContent = {
+    title: title,
+    html: content,
+  };
 
   const pinataData = JSON.stringify({
-    pinataContent: {
-      title: title,
-      content: content,
-    },
+    pinataContent: pinataContent,
     pinataMetadata: {
       name: `${title}.json`,
     },
@@ -61,8 +63,7 @@ async function pinContentToPinata(content: string, title: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'pinata_api_key': PINATA_API_KEY,
-      'pinata_secret_api_key': PINATA_SECRET_API_KEY,
+      Authorization: `Bearer ${process.env.PINATA_JWT}`,
     },
     body: pinataData,
   });
@@ -76,7 +77,22 @@ async function pinContentToPinata(content: string, title: string) {
   return responseData.IpfsHash;
 }
 
-function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string {
+
+async function getScreenshotUrl(url: string) {
+  const screenshotOneApiKey = process.env.SCREENSHOTONE_API_KEY;
+  if (!screenshotOneApiKey) {
+    console.warn("ScreenshotOne API key not found. Using placeholder image.");
+    return `https://picsum.photos/seed/${Math.random()}/600/400`;
+  }
+  
+  // Use a reliable screenshot service
+  const screenshotApiUrl = `https://api.screenshotone.com/take?access_key=${screenshotOneApiKey}&url=${encodeURIComponent(url)}&full_page=false&viewport_width=1200&viewport_height=630`;
+
+  // No need to fetch, the URL itself is what we store
+  return screenshotApiUrl;
+}
+
+function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string | null {
     try {
         // 1. Prioritize Open Graph image
         const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
@@ -96,12 +112,11 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string {
         }
         
     } catch (e) {
-        console.error('Error parsing image from HTML, falling back to placeholder.', e);
+        console.error('Error parsing image from HTML.', e);
     }
     
-    // 3. If nothing is found, use a placeholder
-    console.log('No suitable image found, using placeholder.');
-    return `https://picsum.photos/seed/${Math.random()}/600/400`;
+    // 3. If nothing is found, return null
+    return null;
 }
 
 
@@ -149,11 +164,18 @@ export async function archiveUrl(
     console.log(`Content pinned to IPFS: ${ipfsUrl}`);
     
     // 3. Simulate notarizing on Polygon blockchain
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-    // 4. Get Screenshot URL by extracting from the page content
-    const screenshotUrl = extractImageUrlFromHtml(pageContent, url);
+    // 4. Get Screenshot URL
+    let screenshotUrl = extractImageUrlFromHtml(pageContent, url);
+    if (!screenshotUrl) {
+        console.log("No image found in HTML, generating a new screenshot.");
+        screenshotUrl = await getScreenshotUrl(url);
+    } else {
+        console.log(`Using extracted image as screenshot: ${screenshotUrl}`);
+    }
+
 
     // 5. Save to Firestore
     const archivesCollection = collection(firestore, 'archives');
@@ -171,13 +193,7 @@ export async function archiveUrl(
     const docRef = await addDoc(archivesCollection, newArchiveData);
 
     console.log("Document written with ID: ", docRef.id);
-
-    const contentDocRef = doc(firestore, `archive_content/${docRef.id}`);
-    const contentData = { content: pageContent };
     
-    await setDoc(contentDocRef, contentData);
-
-
     revalidatePath('/');
     revalidatePath(`/archives/${docRef.id}`);
     
@@ -201,28 +217,47 @@ export async function archiveUrl(
 }
 
 export async function getArchiveById(id: string): Promise<any | undefined> {
-  const { firestore } = getFirebase();
-  const archiveDocRef = doc(firestore, `archives/${id}`);
-  const contentDocRef = doc(firestore, `archive_content/${id}`);
-
-  const [archiveDoc, contentDoc] = await Promise.all([
-    getDoc(archiveDocRef),
-    getDoc(contentDocRef)
-  ]);
-
-  if (!archiveDoc.exists()) {
+  try {
+    const { firestore } = getFirebase();
+    const archiveDocRef = doc(firestore, `archives/${id}`);
+    
+    const archiveDoc = await getDoc(archiveDocRef);
+    
+    if (!archiveDoc.exists()) {
+      return undefined;
+    }
+    
+    const ipfsHash = archiveDoc.data().ipfsUrl.replace('ipfs://', '');
+    const pinataUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+    
+    const res = await fetch(pinataUrl);
+    if (!res.ok) {
+        console.error(`Failed to fetch content from Pinata: ${res.status} ${res.statusText}`);
+        // Return metadata even if content fails to load
+        const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
+        if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
+            archiveData.createdAt = archiveData.createdAt.toMillis();
+        }
+        return {
+            ...archiveData,
+            content: '<p>Error: Could not load archived content from IPFS.</p>',
+        };
+    }
+    
+    const jsonData = await res.json();
+    const content = jsonData.html;
+    
+    const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
+    if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
+      archiveData.createdAt = archiveData.createdAt.toMillis();
+    }
+    
+    return {
+      ...archiveData,
+      content: content,
+    };
+  } catch (error) {
+    console.error(`Error fetching archive ${id}:`, error);
     return undefined;
   }
-
-  const archiveData = { id: archiveDoc.id, ...archiveDoc.data() } as any;
-  if (archiveData.createdAt && typeof archiveData.createdAt.toMillis === 'function') {
-    archiveData.createdAt = archiveData.createdAt.toMillis();
-  }
-  
-  const contentData = contentDoc.exists() ? (contentDoc.data() as any) : { content: '' };
-
-  return {
-    ...archiveData,
-    ...contentData,
-  };
 }
