@@ -1,6 +1,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getArchiveById } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle, Tag } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Archive } from '@/lib/types';
+import ArchiveQRCode from '@/components/archive-qrcode';
 
 type PageProps = {
   params: { id: string };
@@ -19,6 +21,11 @@ export default async function ArchivePage({ params }: PageProps) {
   if (!archive) {
     notFound();
   }
+
+  const headersList = headers();
+  const host = headersList.get('host') || '';
+  const protocol = host.startsWith('localhost') ? 'http' : 'https';
+  const pageUrl = `${protocol}://${host}/archives/${archive.id}`;
   
   // This function safely handles date conversion from various formats.
   const getDate = () => {
@@ -128,7 +135,7 @@ export default async function ArchivePage({ params }: PageProps) {
               </CardContent>
             </Card>
           </div>
-          <div>
+          <div className="space-y-8">
             <Card>
               <CardHeader>
                 <CardTitle>Archive Details</CardTitle>
@@ -154,6 +161,9 @@ export default async function ArchivePage({ params }: PageProps) {
                 </ul>
               </CardContent>
             </Card>
+
+            <ArchiveQRCode url={pageUrl} />
+            
           </div>
         </div>
       </div>
