@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from 'lucide-react';
+import { Badge } from './ui/badge';
 
 type ArchiveCardProps = {
   archive: Archive;
@@ -23,18 +24,26 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
     if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
       return new Date(archive.createdAt.toMillis());
     }
-    // Assume it's a number (milliseconds)
+    // Assume it's already a number (milliseconds) if passed from server action
     if (typeof archive.createdAt === 'number') {
         return new Date(archive.createdAt);
     }
-    return new Date(); // Fallback
+    // Handle string date
+    if (typeof archive.createdAt === 'string') {
+        const date = new Date(archive.createdAt);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+    return null;
   };
 
-  const formattedDate = getDate().toLocaleDateString('en-US', {
+  const date = getDate();
+  const formattedDate = date ? date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-      });
+      }) : 'Invalid Date';
 
 
   return (
@@ -55,6 +64,10 @@ export default function ArchiveCard({ archive }: ArchiveCardProps) {
                  <Skeleton className="h-full w-full" />
               </div>
             )}
+            <div className="absolute top-2 right-2">
+                {archive.archiveStatus === 'pending' && <Badge variant="outline">Pending</Badge>}
+                {archive.archiveStatus === 'failed' && <Badge variant="destructive">Failed</Badge>}
+            </div>
           </div>
         </CardContent>
         <CardHeader className="flex-grow">

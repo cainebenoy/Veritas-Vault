@@ -143,7 +143,7 @@ export async function archiveUrl(
       originalUrl: url,
       title: `Archiving: ${url}`,
       createdAt: serverTimestamp(),
-      status: 'pending',
+      archiveStatus: 'pending',
       screenshotUrl: null,
   });
   console.log("Created temporary document with ID: ", tempDocRef.id);
@@ -204,7 +204,7 @@ export async function archiveUrl(
         ipfsUrl: ipfsUrl,
         blockchainTx: txHash,
         screenshotUrl: screenshotUrl,
-        status: 'complete' as const,
+        archiveStatus: 'complete' as const,
     };
     
     await setDoc(tempDocRef, finalArchiveData, { merge: true });
@@ -231,9 +231,9 @@ export async function archiveUrl(
   } catch (error: any) {
     console.error('Archiving failed:', error);
     
-    // Update the doc to failed status
+    // Update the doc to failed archiveStatus
     await setDoc(tempDocRef, {
-        status: 'failed',
+        archiveStatus: 'failed',
         failureReason: error.message || 'An unknown error occurred.',
     }, { merge: true });
 
@@ -268,7 +268,7 @@ export async function getArchiveById(id: string): Promise<any | undefined> {
     }
     
     // Don't fetch content if the archive failed
-    if (archiveData.status === 'failed') {
+    if (archiveData.archiveStatus === 'failed') {
       return {
         ...archiveData,
         content: '<p>This page could not be archived.</p>'

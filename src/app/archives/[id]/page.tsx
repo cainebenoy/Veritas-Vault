@@ -20,7 +20,7 @@ export default async function ArchivePage({ params }: PageProps) {
   }
   
   const getDate = () => {
-    if (!archive.createdAt) return new Date();
+    if (!archive.createdAt) return null;
     // Check if it's a Firestore Timestamp
     if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt) {
       return new Date(archive.createdAt.toMillis());
@@ -29,13 +29,21 @@ export default async function ArchivePage({ params }: PageProps) {
     if (typeof archive.createdAt === 'number') {
         return new Date(archive.createdAt);
     }
-    return new Date(); // Fallback
+    // Handle string date
+    if (typeof archive.createdAt === 'string') {
+        const date = new Date(archive.createdAt);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+    return null; // Fallback
   };
-
-  const formattedDate = getDate().toLocaleString('en-US', {
+  
+  const date = getDate();
+  const formattedDate = date ? date.toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
-    });
+    }) : 'Date not available';
   
   const metadataItems = [
     {
@@ -73,12 +81,12 @@ export default async function ArchivePage({ params }: PageProps) {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary mt-6 font-headline break-words">
             {archive.title}
           </h1>
-            {archive.status === 'complete' && <Badge variant="secondary" className="mt-4">Archive Complete</Badge>}
-            {archive.status === 'failed' && <Badge variant="destructive" className="mt-4">Archive Failed</Badge>}
-            {archive.status === 'pending' && <Badge variant="outline" className="mt-4">Archive In Progress...</Badge>}
+            {archive.archiveStatus === 'complete' && <Badge variant="secondary" className="mt-4">Archive Complete</Badge>}
+            {archive.archiveStatus === 'failed' && <Badge variant="destructive" className="mt-4">Archive Failed</Badge>}
+            {archive.archiveStatus === 'pending' && <Badge variant="outline" className="mt-4">Archive In Progress...</Badge>}
         </header>
 
-        {archive.status === 'failed' && (
+        {archive.archiveStatus === 'failed' && (
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Archiving Failed</AlertTitle>

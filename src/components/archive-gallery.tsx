@@ -43,14 +43,20 @@ export default function ArchiveGallery() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const { ref, inView } = useInView({ threshold: 0 });
 
-  const buildQuery = useCallback((startAfterDoc: any = null) => {
-    if (!firestore) return null;
+  const fetchArchives = useCallback(async (startAfterDoc: any = null, isInitial = false) => {
+    if (!firestore || (!hasMore && !isInitial)) return;
 
+    if (isInitial) {
+        setIsLoading(true);
+        setArchives([]);
+        setHasMore(true);
+    } else {
+        setIsFetchingMore(true);
+    }
+    
     let q: Query<DocumentData> = query(collection(firestore, 'archives'), orderBy('createdAt', 'desc'));
 
     if (searchTerm) {
-        // Firestore doesn't support case-insensitive 'contains' queries.
-        // This query performs a "starts with" search, which is a reasonable compromise.
         q = query(q, 
             where('title', '>=', searchTerm),
             where('title', '<=', searchTerm + '\uf8ff')
@@ -61,28 +67,7 @@ export default function ArchiveGallery() {
       q = query(q, startAfter(startAfterDoc));
     }
 
-    return query(q, limit(PAGE_SIZE));
-  }, [firestore, searchTerm]);
-
-
-  const fetchArchives = useCallback(async (isInitial = false) => {
-    if (!firestore || (!hasMore && !isInitial) || isFetchingMore) return;
-
-    if (isInitial) {
-        setIsLoading(true);
-        setArchives([]);
-        setLastDoc(null);
-        setHasMore(true);
-    } else {
-        setIsFetchingMore(true);
-    }
-
-    const q = buildQuery(isInitial ? null : lastDoc);
-    if (!q) {
-      setIsLoading(false);
-      setIsFetchingMore(false);
-      return
-    };
+    q = query(q, limit(PAGE_SIZE));
 
     try {
       const documentSnapshots = await getDocs(q);
@@ -95,27 +80,27 @@ export default function ArchiveGallery() {
     } catch (error) {
       console.error("Error fetching archives:", error);
     } finally {
-        setIsLoading(false);
+        if (isInitial) setIsLoading(false);
         setIsFetchingMore(false);
     }
-  }, [firestore, hasMore, isFetchingMore, buildQuery]);
+  }, [firestore, searchTerm, hasMore]);
 
   // Initial fetch and search fetch
   useEffect(() => {
     const handler = setTimeout(() => {
         if(firestore) {
-            fetchArchives(true);
+            fetchArchives(null, true);
         }
     }, 300); // Debounce search
     return () => clearTimeout(handler);
-  }, [searchTerm, firestore]);
+  }, [searchTerm, firestore, fetchArchives]);
 
   // Infinite scroll
   useEffect(() => {
     if (inView && !isFetchingMore && hasMore && !isLoading) {
-      fetchArchives();
+      fetchArchives(lastDoc);
     }
-  }, [inView, fetchArchives, isFetchingMore, hasMore, isLoading]);
+  }, [inView, fetchArchives, isFetchingMore, hasMore, isLoading, lastDoc]);
 
   return (
     <section>
