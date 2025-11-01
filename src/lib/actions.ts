@@ -20,15 +20,13 @@ async function pinContentToPinata(content: string, title: string) {
     return `bafybei${randomHash}`;
   }
   
-  const pinataContent = {
-    title: title,
-    html: content,
-  };
-
   const pinataData = JSON.stringify({
-    pinataContent: pinataContent,
+    pinataContent: {
+      title: title,
+      html: content,
+    },
     pinataMetadata: {
-      name: `${title}.json`,
+      name: `${title.replace(/[^a-zA-Z0-9]/g, '-')}.json`,
     },
     pinataOptions: {
       cidVersion: 1,
@@ -39,7 +37,8 @@ async function pinContentToPinata(content: string, title: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PINATA_JWT}`
+      'pinata_api_key': PINATA_API_KEY,
+      'pinata_secret_api_key': PINATA_SECRET_API_KEY,
     },
     body: pinataData,
   });
@@ -74,9 +73,7 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
         const ogImageMatch = pageContent.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["'](.*?)["']/i);
         if (ogImageMatch && ogImageMatch[1]) {
             const ogImageUrl = ogImageMatch[1];
-            // Simple check to avoid data URIs or invalid URLs from og:image
             if (ogImageUrl.startsWith('http')) {
-                 console.log('Found og:image:', ogImageUrl);
                  return new URL(ogImageUrl, baseUrl).href;
             }
         }
@@ -92,11 +89,9 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
 
                 const src = srcMatch[1];
                 
-                // Skip data URIs and tiny images
                 if (src.startsWith('data:')) continue;
                 if (src.toLowerCase().includes('logo')) continue;
 
-                // Check for explicit small sizes
                 const widthMatch = imgTag.match(/width=["'](\d+)["']/i);
                 const heightMatch = imgTag.match(/height=["'](\d+)["']/i);
                 const minSize = 150;
@@ -104,7 +99,6 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
                 if (widthMatch && parseInt(widthMatch[1], 10) < minSize) continue;
                 if (heightMatch && parseInt(heightMatch[1], 10) < minSize) continue;
                 
-                console.log('Found suitable img tag:', src);
                 return new URL(src, baseUrl).href;
             }
         }
@@ -114,7 +108,6 @@ function extractImageUrlFromHtml(pageContent: string, baseUrl: string): string |
     }
     
     // 3. If nothing is found, return null
-    console.log('No suitable image found in HTML content.');
     return null;
 }
 
