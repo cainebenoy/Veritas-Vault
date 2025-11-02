@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function Loading() {
+export default function ArchivePageLoading() {
   return (
      <main className="flex min-h-screen w-full flex-col items-center bg-background">
       <div className="w-full max-w-7xl px-4 py-8 md:py-12">

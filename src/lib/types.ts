@@ -14,7 +14,7 @@ export type Archive = {
   originalUrl: string;
   title: string;
   createdAt: FieldValue | number;
-  ipfsUrl: string;
+  ipfsUrl: string | null; // Can be a full URL or null if simulated
   blockchainTx: string;
   screenshotUrl: string;
   archiveStatus: 'complete' | 'failed' | 'pending';
@@ -31,7 +31,7 @@ export type ArchiveState = {
   message: string;
   data?: {
     archiveId: string;
-    ipfsUrl: string;
+    ipfsUrl: string | null;
     blockchainTx: string;
   };
 };

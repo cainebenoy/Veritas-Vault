@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Globe, ShieldCheck, AlertTriangle, Tag } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Archive } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
+import ArchivePageLoading from './loading';
 
 type PageProps = {
   params: { id: string };
@@ -32,40 +33,28 @@ export default function ArchivePage({ params }: PageProps) {
   }, [params]);
 
   if (loading || archive === undefined) {
-    return (
-        <main className="flex min-h-screen w-full flex-col items-center bg-background">
-            <div className="w-full max-w-7xl px-4 py-8 md:py-12">
-                {/* Simplified skeleton or loading indicator */}
-                <p>Loading...</p>
-            </div>
-        </main>
-    );
+    return <ArchivePageLoading />;
   }
 
   if (!archive) {
     notFound();
   }
   
-  // This function safely handles date conversion from various formats.
   const getDate = () => {
     if (!archive.createdAt) return null;
-
-    // Handle Firestore Timestamp object (if it's not pre-serialized)
     if (typeof archive.createdAt === 'object' && 'toMillis' in archive.createdAt && typeof archive.createdAt.toMillis === 'function') {
       return new Date(archive.createdAt.toMillis());
     }
-    // Handle number (milliseconds from server action)
     if (typeof archive.createdAt === 'number') {
         return new Date(archive.createdAt);
     }
-    // Handle ISO string
     if (typeof archive.createdAt === 'string') {
         const date = new Date(archive.createdAt);
         if (!isNaN(date.getTime())) {
             return date;
         }
     }
-    return null; // Return null if format is unrecognized
+    return null;
   };
   
   const date = getDate();
@@ -74,6 +63,10 @@ export default function ArchivePage({ params }: PageProps) {
       timeStyle: 'short',
     }) : 'Date not available';
   
+  const ipfsDisplayValue = archive.ipfsUrl
+    ? new URL(archive.ipfsUrl).hostname + '/...' + archive.ipfsUrl.slice(-8)
+    : 'Simulated (no public link)';
+
   const metadataItems = [
     {
       icon: <Globe className="h-4 w-4" />,
@@ -84,13 +77,13 @@ export default function ArchivePage({ params }: PageProps) {
     {
       icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
       label: 'IPFS Link',
-      value: archive.ipfsUrl,
-      href: archive.ipfsUrl ? `https://ipfs.io/ipfs/${archive.ipfsUrl.replace('ipfs://', '')}` : undefined,
+      value: ipfsDisplayValue,
+      href: archive.ipfsUrl, // This will be the full URL or null
     },
     {
       icon: <ShieldCheck className="h-4 w-4" />,
       label: 'Polygon Amoy TX',
-      value: archive.blockchainTx ? archive.blockchainTx.substring(0, 20) + '...' : undefined,
+      value: archive.blockchainTx ? archive.blockchainTx.substring(0, 20) + '...' : 'Simulated',
       href: archive.blockchainTx ? `https://www.oklink.com/amoy/tx/${archive.blockchainTx}` : undefined,
     },
     {

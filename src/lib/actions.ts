@@ -15,13 +15,13 @@ import type { ArchiveState } from './types';
 /**
  * Simulates pinning content to an IPFS service like Pinata.
  * In a real app, this would make an API call to Pinata.
- * @returns A simulated IPFS CID hash.
+ * @returns A full, working Pinata gateway URL or null if simulated.
  */
-async function pinContentToIpfs(content: string, title: string): Promise<string> {
+async function pinContentToIpfs(content: string, title: string): Promise<string | null> {
   console.log('Simulating IPFS Pinning...');
   const { PINATA_API_KEY, PINATA_SECRET_API_KEY } = process.env;
 
-  // If Pinata keys are present, use them. Otherwise, simulate.
+  // If Pinata keys are present, use them to get a real, working URL.
   if (PINATA_API_KEY && PINATA_SECRET_API_KEY) {
     try {
       const pinataData = JSON.stringify({
@@ -40,17 +40,20 @@ async function pinContentToIpfs(content: string, title: string): Promise<string>
       });
       if (!res.ok) throw new Error(`Pinata API Error: ${res.statusText}`);
       const responseData = await res.json();
-      console.log('Successfully pinned to Pinata:', responseData.IpfsHash);
-      return responseData.IpfsHash;
+      const ipfsHash = responseData.IpfsHash;
+      console.log('Successfully pinned to Pinata:', ipfsHash);
+      // Return the full gateway URL for immediate access
+      return `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
     } catch (error) {
       console.warn('Pinata upload failed, falling back to simulation.', error);
+      // Fall through to simulation if Pinata fails.
     }
   }
 
-  // Fallback simulation
+  // Fallback simulation returns null because there's no real URL.
   await new Promise((resolve) => setTimeout(resolve, 1500));
-  const randomHash = [...Array(46)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-  return `bafybei${randomHash}`;
+  console.log('IPFS pinning simulated. No public URL generated.');
+  return null;
 }
 
 /**
@@ -58,11 +61,11 @@ async function pinContentToIpfs(content: string, title: string): Promise<string>
  * In a real app, this would involve a library like `viem` to interact with a smart contract.
  * @returns A simulated Polygon transaction hash.
  */
-async function notarizeOnBlockchain(ipfsHash: string): Promise<string> {
+async function notarizeOnBlockchain(ipfsHash: string | null): Promise<string> {
   console.log('Simulating blockchain notarization...');
   await new Promise((resolve) => setTimeout(resolve, 2000));
   const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-  console.log(`Simulated TX Hash for IPFS hash ${ipfsHash}: ${txHash}`);
+  console.log(`Simulated TX Hash for IPFS content: ${txHash}`);
   return txHash;
 }
 
@@ -159,12 +162,11 @@ export async function archiveUrl(
     
     await setDoc(tempDocRef, { title: pageTitle }, { merge: true });
 
-    // 2. Upload to IPFS (Simulated)
-    const ipfsHash = await pinContentToIpfs(pageContent, pageTitle);
-    const ipfsUrl = `ipfs://${ipfsHash}`;
+    // 2. Upload to IPFS (Simulated or Real)
+    const ipfsUrl = await pinContentToIpfs(pageContent, pageTitle);
 
     // 3. Notarize on Blockchain (Simulated)
-    const txHash = await notarizeOnBlockchain(ipfsHash);
+    const txHash = await notarizeOnBlockchain(ipfsUrl);
 
     // 4. Get Screenshot URL
     const screenshotUrl = await getScreenshotUrl(url);
@@ -174,7 +176,7 @@ export async function archiveUrl(
         originalUrl: url,
         title: pageTitle,
         createdAt: serverTimestamp(),
-        ipfsUrl: ipfsUrl,
+        ipfsUrl: ipfsUrl, // This will be the full Pinata URL or null
         blockchainTx: txHash,
         screenshotUrl: screenshotUrl,
         archiveStatus: 'complete' as const,

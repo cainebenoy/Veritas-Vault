@@ -104,6 +104,7 @@ export default function ArchiveForm() {
   }, [state, toast]);
 
   const copyToClipboard = (text: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     toast({ description: 'Copied to clipboard!' });
   };
@@ -190,10 +191,14 @@ export default function ArchiveForm() {
               <AlertTitle>Archive Created!</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
                  <div className="flex items-center justify-between">
-                  <span className="text-sm font-mono truncate text-muted-foreground">IPFS: {state.data.ipfsUrl}</span>
-                  <Button variant="ghost" size="icon" onClick={() => copyToClipboard(state.data.ipfsUrl)}>
-                    <ClipboardCopy className="h-4 w-4"/>
-                  </Button>
+                  <span className="text-sm font-mono truncate text-muted-foreground">
+                    IPFS: {state.data.ipfsUrl ? 'Available' : 'Simulated'}
+                  </span>
+                  {state.data.ipfsUrl && (
+                    <Button variant="ghost" size="icon" onClick={() => copyToClipboard(state.data.ipfsUrl!)}>
+                        <ClipboardCopy className="h-4 w-4"/>
+                    </Button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-mono truncate text-muted-foreground">TX: {state.data.blockchainTx}</span>
