@@ -90,7 +90,7 @@ async function getScreenshotUrl(url: string): Promise<string> {
   screenshotApiUrl.searchParams.set('url', url);
   screenshotApiUrl.searchParams.set('full_page', 'false');
   screenshotApiUrl.searchParams.set('viewport_width', '1200');
-  screenshotApiUrl.search_params.set('viewport_height', '630');
+  screenshotApiUrl.searchParams.set('viewport_height', '630');
   screenshotApiUrl.searchParams.set('block_ads', 'true');
   screenshotApiUrl.searchParams.set('block_cookie_banners', 'true');
   screenshotApiUrl.searchParams.set('cache', 'false'); // Use cache:false to get fresh screenshots for this demo
